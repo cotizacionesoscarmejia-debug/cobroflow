@@ -35,12 +35,19 @@ export async function POST(req: NextRequest) {
   try {
     payload = JSON.parse(rawBody);
   } catch {
+    console.error('webhook hotmart bad json', rawBody.slice(0, 500));
     return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
+
+  // TEMPORAL: loguear el payload completo para verificar los nombres de campo
+  // reales contra un envío de prueba de Hotmart (18-VENTA-HOTMART.md → "verificar
+  // antes de confiar"). Quitar una vez confirmados los campos.
+  console.log('webhook hotmart payload', JSON.stringify(payload));
 
   // 4. Frescura (anti-replay).
   const ts = payload.creation_date ?? payload.data?.purchase?.approved_date;
   if (ts && Date.now() - Number(ts) > REPLAY_WINDOW_MS) {
+    console.error('webhook hotmart stale', { ts, now: Date.now() });
     return NextResponse.json({ error: 'stale' }, { status: 400 });
   }
 
