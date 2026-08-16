@@ -43,7 +43,7 @@ export function saldoPendiente(c: PrimerCliente): number {
   return Math.max(0, c.total - c.anticipo);
 }
 
-export const MONEDAS = ['USD', 'MXN', 'COP', 'ARS', 'PEN', 'CLP'] as const;
+export const MONEDAS = ['USD', 'MXN', 'COP', 'ARS', 'PEN', 'CLP', 'GTQ'] as const;
 
 export const PERFILES = [
   'Freelancer',
