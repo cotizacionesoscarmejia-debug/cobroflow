@@ -23,11 +23,12 @@ export default function CobrosPage() {
   const [copiado, setCopiado] = useState<string | null>(null);
 
   useEffect(() => {
-    const db = obtenerDB();
-    const lista = proyectosConDatos(db)
-      .filter((p) => p.saldo > 0)
-      .sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]);
-    setPendientes(lista);
+    obtenerDB().then((db) => {
+      const lista = proyectosConDatos(db)
+        .filter((p) => p.saldo > 0)
+        .sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]);
+      setPendientes(lista);
+    });
   }, []);
 
   if (!pendientes) return null;

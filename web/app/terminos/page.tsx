@@ -27,7 +27,7 @@ export default function TerminosPage() {
           <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Planes y pagos</h2>
           <p className="mt-2">
             El plan Free es gratuito y no requiere tarjeta. Los planes Pro y Premium se cobran por
-            suscripción mensual a través de Stripe. Puedes cancelar tu suscripción cuando quieras
+            suscripción mensual a través de Hotmart. Puedes cancelar tu suscripción cuando quieras
             desde tu cuenta; al cancelar, conservas acceso a tus datos ya cargados en el plan Free.
           </p>
         </section>

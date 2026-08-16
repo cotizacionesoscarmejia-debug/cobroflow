@@ -1,12 +1,20 @@
 # ESTADO — CobroFlow
-Última actualización: 2026-08-16 | Sesión actual: 5
+Última actualización: 2026-08-16 | Sesión actual: 6
 
-⏸️ CHECKPOINT — Sesiones 3-5 completas: landing, onboarding, paywall, login y la app interna
-(Dashboard, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente, Cuenta) están
-construidas, compilan limpio (tsc+build) y se probaron de punta a punta en el navegador: landing
-→ onboarding (perfil→moneda→primer cliente→saldo calculado en vivo) → paywall (recap+3 planes)
-→ login (mock) → Dashboard real con datos en `localStorage` → agregar cliente → registrar pago
-→ el saldo baja a $0 y cambia a "Pagado". Todo funciona, sin bugs conocidos.
+⏸️ CHECKPOINT — Sesión 6 en curso: Supabase real conectado y verificado de punta a punta.
+Repo propio en GitHub (`cotizacionesoscarmejia-debug/cobroflow`). Esquema completo aplicado
+(`profiles`/`clients`/`projects`/`payments`, RLS en las 4, triggers `handle_new_user` /
+`restringe_update_profiles` / `valida_limite_free`). Toda la app interna migró de `localStorage`
+a Supabase real (`lib/app-data.ts` reescrito, todas las pantallas en patrón async). Auth por
+enlace mágico (Supabase + Resend por SMTP) probado en vivo: login → correo real → `/confirmar`
+→ sesión real → `/app` con datos reales. `tsc`/`build` limpios.
+
+Verificado con el usuario en vivo: el Dashboard muestra su correo/iniciales reales (ya no el
+"Carlos Rodríguez" de prueba). Ciclo completo confirmado extremo a extremo.
+
+⏸️ CHECKPOINT ANTERIOR — Sesiones 3-5: landing, onboarding, paywall, login y la app interna
+(Dashboard, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente, Cuenta) construidas,
+compilan limpio y se probaron de punta a punta con `localStorage` (ya migrado a Supabase arriba).
 
 **Registro formal de revisor-visual (las 4 pantallas que deciden el dinero):**
 | Pantalla | Rondas | Último puntaje | Veredicto |
@@ -92,9 +100,13 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
 
 ## Decisiones técnicas (NO re-discutir sin pedirlo el usuario)
 - Framework: **Next.js (App Router)**. Auth planeada: **Supabase Auth** (magic link + Google).
-- Pagos planeados: **Stripe** (pedido explícito del usuario, desviación consciente del default
-  Hotmart del SO — apropiado para un SaaS de autoservicio). Verificar cobertura del país del
-  usuario cuando se conecte en Sesión 6.
+- Pagos: **Hotmart** (default del SO). Se había planeado Stripe a pedido del usuario, pero en
+  Sesión 6 se descubrió que Stripe no permite abrir cuenta de vendedor en Guatemala (país del
+  usuario) — LATAM soportada por Stripe se limita a México y Brasil. El usuario decidió cambiar a
+  Hotmart en vivo (2026-08-16). Implica 2 productos Hotmart con suscripción recurrente (Pro
+  $7.99/mes, Premium $14.99/mes) + webhook con hottok que actualiza `profiles.plan` en Supabase,
+  igual que el patrón ya probado en English2Hire (mismo dueño, cuenta Hotmart posiblemente
+  reutilizable).
 - Base de datos planeada: Supabase (Postgres+RLS) — `profiles`, `subscriptions`, `clients`,
   `projects`, `payments`, `payment_schedules`, `expenses` (Fase 2), `reminder_templates`, `goals`
   (Fase 3), `notifications`, `ai_analysis` (Fase 3), `activity_logs`.
@@ -118,17 +130,40 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
 - Sesión 4 — Onboarding (perfil→moneda→cliente→resultado) + paywall + login (2026-08-16).
 - Sesión 5 — App interna: Dashboard, Clientes, Centro de Cobros, Nuevo cliente, Cuenta
   (2026-08-16).
+- Sesión 6 (en curso) — GitHub propio + esquema Supabase real (RLS, triggers) + toda la app
+  migrada a datos reales + Auth por enlace mágico funcionando en vivo con Resend (2026-08-16).
 
 ## Próximas sesiones 📋
-- Sesión 6: Integraciones reales — GitHub, Supabase (esquema real + RLS, migrar el modelo de
-  `lib/app-data.ts`), Stripe (checkout+webhook+portal, confirmar país soportado), Resend, Vercel,
-  dominio. Al conectar Supabase: montar 1 screenshot real del Dashboard en la landing (`Hero.tsx`
-  + `AppPorDentro.tsx`) y re-lanzar `revisor-visual` sobre la landing.
+- Resto de Sesión 6: Stripe (checkout+webhook+portal, confirmar país soportado), Vercel, dominio.
+  Al tener el Dashboard con datos reales: montar 1 screenshot real en la landing (`Hero.tsx` +
+  `AppPorDentro.tsx`) y re-lanzar `revisor-visual` sobre la landing.
 - Sesión 7: Testing, pulido, rigor de entrega — buen momento para retomar `revisor-visual` sobre
   las 4 pantallas del dinero con el proyecto ya más maduro (screenshots reales, backend real).
 - Sesión 8: Fase 2 (gastos/reportes/metas) y Fase 3 (Premium: proyecciones/IA) + adquisición.
 
 ## Problemas conocidos ⚠️
+- **RESUELTO — exposición de clave (2026-08-16):** la `SUPABASE_SECRET_KEY` quedó expuesta en el
+  chat vía el auto-diff que el sistema muestra al modificarse un archivo que el agente ya había
+  tocado antes (mismo patrón ya documentado en el proyecto English2Hire). Se le avisó al usuario
+  de inmediato para rotarla. **Patrón que evita esto:** que el USUARIO cree/edite `.env.local`
+  directamente sin que el agente lo toque primero — o pegar la variable con `$env:NOMBRE=` en la
+  misma terminal donde corre `npm run dev`, nunca en un archivo que el agente ya abrió.
+- **RESUELTO — SMTP/Resend no enviaba el enlace mágico (2026-08-16):** Supabase requiere SMTP
+  personalizado para poder editar el "Source" de las plantillas de correo. Se conectó Resend
+  (dominio de prueba `onboarding@resend.dev`, solo entrega a la dirección con la que te registras
+  en Resend — cambiar por dominio propio antes de vender). La cadena de errores real, por si se
+  repite: (1) el campo Username del SMTP debía ser literalmente `resend`, Supabase lo autorrellenó
+  con el nombre del proyecto; (2) el botón "Reset template" del editor de plantillas borra el
+  cuerpo custom sin avisar, y un copy/paste posterior duplicó el HTML (`<a href="<a href=...`)
+  rompiendo el render del correo; (3) incluso con todo bien configurado y guardado, Auth (GoTrue)
+  no tomó la config nueva hasta reiniciar el proyecto desde Settings → General → Restart project
+  — si un problema de envío de correo persiste con la configuración visualmente correcta, reiniciar
+  el proyecto es el primer paso, no el último. (4) Site URL había quedado en el puerto por defecto
+  3000 en vez de 3200 (el puerto real de `npm run dev` de este proyecto) — revisar siempre que
+  coincida tras cualquier cambio de URL Configuration.
+- Google OAuth: se quitó el botón de "Iniciar con Google" del login (regla UX "todo elemento
+  interactivo hace algo" — no se dejó un botón sin funcionar). Pendiente si el usuario lo pide:
+  requiere crear la app OAuth en Google Cloud Console + configurar el provider en Supabase.
 - **Veredictos NO LISTA en landing/onboarding/paywall/Dashboard** — ver tabla y decisión de
   cierre arriba. Detalle de cada ronda en `docs/revisiones/<pantalla>-veredicto.md`.
 - Email de soporte en landing/footer es `hola@cobroflow.app` — PLACEHOLDER, dominio real

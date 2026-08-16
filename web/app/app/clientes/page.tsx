@@ -23,29 +23,30 @@ export default function ClientesPage() {
   const [buscar, setBuscar] = useState('');
 
   useEffect(() => {
-    const db = obtenerDB();
-    const proyectos = proyectosConDatos(db);
-    const porCliente = new Map<string, ProyectoConDatos[]>();
-    for (const p of proyectos) {
-      const lista = porCliente.get(p.cliente.id) ?? [];
-      lista.push(p);
-      porCliente.set(p.cliente.id, lista);
-    }
-    const filas: ClienteResumen[] = [];
-    for (const [, lista] of porCliente) {
-      const ordenada = [...lista].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]);
-      const peor = ordenada[0];
-      filas.push({
-        id: peor.cliente.id,
-        nombre: peor.cliente.nombre,
-        moneda: peor.cliente.moneda,
-        saldo: lista.reduce((s, p) => s + p.saldo, 0),
-        peorEstado: peor.estado,
-        peorProyecto: peor,
-      });
-    }
-    filas.sort((a, b) => ORDEN_URGENCIA[a.peorEstado] - ORDEN_URGENCIA[b.peorEstado]);
-    setResumen(filas);
+    obtenerDB().then((db) => {
+      const proyectos = proyectosConDatos(db);
+      const porCliente = new Map<string, ProyectoConDatos[]>();
+      for (const p of proyectos) {
+        const lista = porCliente.get(p.cliente.id) ?? [];
+        lista.push(p);
+        porCliente.set(p.cliente.id, lista);
+      }
+      const filas: ClienteResumen[] = [];
+      for (const [, lista] of porCliente) {
+        const ordenada = [...lista].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]);
+        const peor = ordenada[0];
+        filas.push({
+          id: peor.cliente.id,
+          nombre: peor.cliente.nombre,
+          moneda: peor.cliente.moneda,
+          saldo: lista.reduce((s, p) => s + p.saldo, 0),
+          peorEstado: peor.estado,
+          peorProyecto: peor,
+        });
+      }
+      filas.sort((a, b) => ORDEN_URGENCIA[a.peorEstado] - ORDEN_URGENCIA[b.peorEstado]);
+      setResumen(filas);
+    });
   }, []);
 
   if (!resumen) return null;

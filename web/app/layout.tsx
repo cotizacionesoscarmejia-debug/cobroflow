@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "CobroFlow — Cobra lo que te deben. Controla lo que ganas.",
   description:
     "CobroFlow te muestra cuánto has cobrado, cuánto te deben y qué clientes necesitan seguimiento — todo desde un solo lugar. Empieza gratis.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

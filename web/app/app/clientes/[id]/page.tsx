@@ -15,12 +15,15 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
   const [registrando, setRegistrando] = useState<string | null>(null);
   const [monto, setMonto] = useState('');
 
-  function recargar() {
-    const db = obtenerDB();
+  async function recargar() {
+    const db = await obtenerDB();
     setProyectos(proyectosConDatos(db).filter((p) => p.cliente.id === id));
   }
 
-  useEffect(recargar, [id]);
+  useEffect(() => {
+    recargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (!proyectos) return null;
   if (proyectos.length === 0) {
@@ -38,14 +41,13 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
   const saldoTotal = proyectos.reduce((s, p) => s + p.saldo, 0);
   const pagadoTotal = proyectos.reduce((s, p) => s + p.pagado, 0);
 
-  function confirmarPago(proyectoId: string) {
+  async function confirmarPago(proyectoId: string) {
     const montoNum = Number(monto.replace(',', '.')) || 0;
     if (montoNum <= 0) return;
-    const db = obtenerDB();
-    registrarPago(db, proyectoId, montoNum);
+    await registrarPago({ clientes: [], proyectos: [], pagos: [] }, proyectoId, montoNum);
     setRegistrando(null);
     setMonto('');
-    recargar();
+    await recargar();
   }
 
   return (

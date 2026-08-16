@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { CtaFunnel } from '@/components/onboarding/ui';
-import { obtenerDB, agregarClienteYProyecto } from '@/lib/app-data';
+import { agregarClienteYProyecto } from '@/lib/app-data';
 
 function hoyISO(offsetDias = 0): string {
   const d = new Date();
@@ -21,7 +21,9 @@ export default function NuevoClientePage() {
   const [fecha, setFecha] = useState(hoyISO(14));
   const [error, setError] = useState<string | null>(null);
 
-  function enviar() {
+  const [guardando, setGuardando] = useState(false);
+
+  async function enviar() {
     if (nombre.trim().length === 0) {
       setError('Escribe el nombre de tu cliente.');
       return;
@@ -36,16 +38,31 @@ export default function NuevoClientePage() {
       setError('Lo que ya te pagó no puede ser más que el precio total.');
       return;
     }
-    const db = obtenerDB();
-    agregarClienteYProyecto(db, {
-      nombre: nombre.trim(),
-      moneda: 'USD',
-      proyecto: proyecto.trim(),
-      precioTotal: totalNum,
-      anticipo: anticipoNum,
-      fechaPromesa: fecha,
-    });
-    router.push('/app/clientes');
+    setGuardando(true);
+    try {
+      await agregarClienteYProyecto(
+        { clientes: [], proyectos: [], pagos: [] },
+        {
+          nombre: nombre.trim(),
+          moneda: 'USD',
+          proyecto: proyecto.trim(),
+          precioTotal: totalNum,
+          anticipo: anticipoNum,
+          fechaPromesa: fecha,
+        }
+      );
+      router.push('/app/clientes');
+    } catch (e) {
+      const mensaje = e instanceof Error ? e.message : '';
+      if (mensaje.includes('limite_free_clientes')) {
+        setError('Llegaste al límite de 3 clientes del plan Free. Mejora a Pro para agregar más.');
+      } else if (mensaje.includes('limite_free_proyectos')) {
+        setError('Llegaste al límite de 5 proyectos del plan Free. Mejora a Pro para agregar más.');
+      } else {
+        setError('No pudimos guardar tu cliente. Intenta de nuevo.');
+      }
+      setGuardando(false);
+    }
   }
 
   return (
@@ -95,7 +112,9 @@ export default function NuevoClientePage() {
         )}
 
         <div className="mt-8">
-          <CtaFunnel type="submit">Guardar cliente</CtaFunnel>
+          <CtaFunnel type="submit" disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Guardar cliente'}
+          </CtaFunnel>
         </div>
       </form>
     </div>

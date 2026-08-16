@@ -24,6 +24,7 @@ export default function LandingPage() {
       {/* 1. HERO */}
       <Hero
         appName="CobroFlow"
+        logo={<img src="/logo.png" alt="" aria-hidden="true" className="size-7 object-contain" />}
         loginHref="/login"
         h1Marked="Cobra lo que te deben. [acento]Controla lo que ganas[/acento]."
         subtitleMarked="CobroFlow te muestra cuánto has cobrado, cuánto te deben y qué clientes necesitan seguimiento."
@@ -144,7 +145,7 @@ export default function LandingPage() {
       <Garantia
         nombre="la Garantía de Cero Riesgo"
         condicionMarked="Empiezas en el plan Free sin poner tarjeta. Si más adelante pasas a Pro o Premium, [b]cancelas cuando quieras[/b], sin permanencia ni preguntas."
-        pisoLegal="Pagos procesados de forma segura por Stripe"
+        pisoLegal="Pagos procesados de forma segura por Hotmart"
       />
 
       {/* 8. FAQ */}
@@ -173,7 +174,7 @@ export default function LandingPage() {
           {
             pregunta: '¿Es seguro poner los datos de mi tarjeta?',
             respuestaMarked:
-              'Sí — el cobro lo procesa Stripe, la misma pasarela que usan miles de negocios. [b]CobroFlow nunca ve ni guarda tu tarjeta[/b].',
+              'Sí — el cobro lo procesa Hotmart, la misma pasarela que usan miles de negocios. [b]CobroFlow nunca ve ni guarda tu tarjeta[/b].',
           },
           {
             pregunta: '¿Puedo cancelar cuando quiera?',

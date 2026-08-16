@@ -7,6 +7,7 @@ import { Plus, TrendingUp, ChevronRight, Check } from 'lucide-react';
 import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
+import { createClient } from '@/lib/supabase/client';
 import {
   obtenerDB,
   proyectosConDatos,
@@ -45,14 +46,22 @@ function SkeletonDashboard() {
 export default function DashboardPage() {
   const [proyectos, setProyectos] = useState<ProyectoConDatos[] | null>(null);
   const [cobrado, setCobrado] = useState(0);
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    const db = obtenerDB();
-    setProyectos(proyectosConDatos(db));
-    setCobrado(cobradoEsteMes(db));
+    obtenerDB().then((db) => {
+      setProyectos(proyectosConDatos(db));
+      setCobrado(cobradoEsteMes(db));
+    });
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setEmail(data.user?.email ?? ''));
   }, []);
 
   if (!proyectos) return <SkeletonDashboard />;
+
+  const nombreUsuario = email ? email.split('@')[0].replace(/[._]/g, ' ') : '';
+  const iniciales = email ? email.slice(0, 2).toUpperCase() : '··';
 
   const moneda = proyectos[0]?.cliente.moneda ?? 'USD';
   const pendientes = proyectos.filter((p) => p.saldo > 0);
@@ -77,17 +86,17 @@ export default function DashboardPage() {
         <motion.div {...entra(0)} className="flex items-center justify-between">
           <div>
             <p className="text-[13px] text-[var(--text-secondary)]">Buenos días</p>
-            <h1 className="text-[20px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">
-              Carlos Rodríguez
+            <h1 className="truncate text-[20px] font-bold capitalize text-[var(--text-primary)] [font-family:var(--font-display)]">
+              {nombreUsuario || 'tu negocio'}
             </h1>
           </div>
           <MotionLink
             href="/app/cuenta"
             aria-label="Ir a mi cuenta"
             whileTap={{ scale: 0.92 }}
-            className="flex size-11 items-center justify-center rounded-full bg-[var(--chip-bg)] text-[15px] font-bold text-[var(--accent)]"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)] text-[15px] font-bold text-[var(--accent)]"
           >
-            CR
+            {iniciales}
           </MotionLink>
         </motion.div>
 

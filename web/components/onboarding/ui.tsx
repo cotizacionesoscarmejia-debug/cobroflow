@@ -25,7 +25,7 @@ export function Marca({ confirmarSalida = false }: { confirmarSalida?: boolean }
         }}
         className="inline-flex items-center gap-2 text-[15px] font-semibold text-[var(--text-primary)]"
       >
-        <span aria-hidden="true" className="size-6 rounded-[8px] bg-[var(--accent)]" />
+        <img src="/logo.png" alt="" aria-hidden="true" className="size-6 object-contain" />
         CobroFlow
       </a>
       <AnimatePresence>

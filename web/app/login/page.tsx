@@ -1,9 +1,10 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Mail, MailCheck } from 'lucide-react';
 import { Marca, CtaFunnel } from '@/components/onboarding/ui';
+import { createClient } from '@/lib/supabase/client';
 import { guardarEstado, leerEstado, type EstadoOnboarding } from '@/lib/onboarding';
 
 const NOMBRE_PLAN: Record<string, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' };
@@ -17,10 +18,11 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const plan = searchParams.get('plan');
   const nombrePlan = plan ? NOMBRE_PLAN[plan] : undefined;
   const [estado, setEstado] = useState<EstadoOnboarding>({});
@@ -33,13 +35,44 @@ function LoginForm() {
     }
   }, [plan]);
 
-  function continuar() {
+  async function continuar() {
     if (!email.includes('@')) return;
     setEnviando(true);
-    // Sin backend real todavía (llega en Sesión 6 con Supabase Auth) — se guarda la
-    // intención y se entra directo, en vez de fingir un correo que no se envió.
-    guardarEstado({});
-    setTimeout(() => router.push('/app'), 500);
+    setError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/confirmar?next=/app`,
+      },
+    });
+    setEnviando(false);
+    if (err) {
+      setError('No pudimos enviar el enlace. Revisa tu correo e intenta de nuevo.');
+      return;
+    }
+    setEnviado(true);
+  }
+
+  if (enviado) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col items-center justify-center px-5 py-10 text-center">
+        <Marca />
+        <span
+          aria-hidden="true"
+          className="mt-10 flex size-14 items-center justify-center rounded-[var(--radius-button)] bg-[var(--chip-bg)]"
+        >
+          <MailCheck size={26} color="var(--accent)" aria-hidden="true" />
+        </span>
+        <h1 className="mt-4 text-[22px] font-bold leading-tight text-[var(--text-primary)] [font-family:var(--font-display)]">
+          Revisa tu correo
+        </h1>
+        <p className="mt-2 max-w-[32ch] text-[14px] leading-relaxed text-[var(--text-secondary)]">
+          Te mandamos un enlace a <span className="font-semibold text-[var(--text-primary)]">{email}</span>. Ábrelo
+          desde tu celular o computadora para entrar.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -58,20 +91,6 @@ function LoginForm() {
         </p>
 
         <div className="mt-8 flex flex-col gap-3">
-          <button
-            type="button"
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] text-[15px] font-semibold text-[var(--text-primary)]"
-          >
-            <GoogleIcon />
-            Continuar con Google
-          </button>
-
-          <div className="my-1 flex items-center gap-3 text-[12px] text-[var(--text-tertiary)]">
-            <span className="h-px flex-1 bg-[color-mix(in_oklab,var(--text-tertiary)_25%,transparent)]" />
-            o con tu correo
-            <span className="h-px flex-1 bg-[color-mix(in_oklab,var(--text-tertiary)_25%,transparent)]" />
-          </div>
-
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-[var(--text-secondary)]">Correo electrónico</span>
             <div className="relative">
@@ -86,8 +105,14 @@ function LoginForm() {
             </div>
           </label>
 
+          {error && (
+            <p role="alert" className="text-[13px] font-medium text-[var(--status-error)]">
+              {error}
+            </p>
+          )}
+
           <CtaFunnel onClick={continuar} disabled={!email.includes('@') || enviando}>
-            {enviando ? 'Entrando…' : 'Crear mi cuenta'}
+            {enviando ? 'Enviando…' : 'Enviarme el enlace'}
           </CtaFunnel>
         </div>
 
@@ -98,16 +123,5 @@ function LoginForm() {
         </p>
       </div>
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
-      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.95v2.33A9 9 0 0 0 9 18Z" />
-      <path fill="#FBBC05" d="M3.97 10.71a5.4 5.4 0 0 1 0-3.42V4.96H.95a9 9 0 0 0 0 8.08l3.02-2.33Z" />
-      <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.96l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
-    </svg>
   );
 }

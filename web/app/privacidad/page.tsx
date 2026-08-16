@@ -19,7 +19,7 @@ export default function PrivacidadPage() {
           <p className="mt-2">
             Tu correo, tu nombre, y los datos de tus clientes y cobros que registras dentro de la
             app (nombre del cliente, proyectos, montos y fechas de pago). Nunca guardamos los
-            datos de tu tarjeta — el pago lo procesa Stripe directamente.
+            datos de tu tarjeta — el pago lo procesa Hotmart directamente.
           </p>
         </section>
         <section>

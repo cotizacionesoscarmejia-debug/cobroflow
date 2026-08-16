@@ -1,7 +1,8 @@
-// Datos de la app interna — localStorage hasta que exista Supabase real (Sesión 6).
-// Semilla realista siempre presente ("la app nunca se enseña vacía", 32-DEL-MVP-AL-PRODUCTO)
-// + migración del primer cliente que el usuario cargó en el onboarding, si existe.
+// Datos de la app interna — Supabase real (Sesión 6). Reemplaza la versión de
+// localStorage de la Sesión 5: mismo modelo, mismas reglas de estado (se siguen
+// calculando en el cliente con matemática simple, nunca en SQL — regla del SO).
 
+import { createClient } from './supabase/client';
 import { leerEstado as leerOnboarding } from './onboarding';
 
 export interface Cliente {
@@ -30,13 +31,11 @@ export interface Pago {
 
 export type EstadoCobro = 'pagado' | 'atrasado' | 'vence_hoy' | 'proximo' | 'al_dia';
 
-interface DB {
+export interface DB {
   clientes: Cliente[];
   proyectos: Proyecto[];
   pagos: Pago[];
 }
-
-const KEY = 'cobroflow_app_data';
 
 function hoyISO(offsetDias = 0): string {
   const d = new Date();
@@ -44,68 +43,43 @@ function hoyISO(offsetDias = 0): string {
   return d.toISOString().slice(0, 10);
 }
 
-function semilla(): DB {
-  const clientes: Cliente[] = [
-    { id: 'c1', nombre: 'Clínica Nova', telefono: '', moneda: 'USD', creadoEn: hoyISO(-30) },
-    { id: 'c2', nombre: 'Restaurante Verde', telefono: '', moneda: 'USD', creadoEn: hoyISO(-20) },
-    { id: 'c3', nombre: 'María López', telefono: '', moneda: 'USD', creadoEn: hoyISO(-45) },
-  ];
-  const proyectos: Proyecto[] = [
-    { id: 'p1', clienteId: 'c1', nombre: 'Página Web Profesional', precioTotal: 900, fechaPromesa: hoyISO(-6) },
-    { id: 'p2', clienteId: 'c2', nombre: 'Landing Page', precioTotal: 450, fechaPromesa: hoyISO(0) },
-    { id: 'p3', clienteId: 'c3', nombre: 'Automatización', precioTotal: 600, fechaPromesa: hoyISO(-15) },
-  ];
-  const pagos: Pago[] = [
-    { id: 'g1', proyectoId: 'p1', monto: 450, fecha: hoyISO(-4) },
-    { id: 'g2', proyectoId: 'p3', monto: 600, fecha: hoyISO(-2) },
-  ];
+// Trae TODOS los clientes/proyectos/pagos del usuario logueado (RLS solo deja
+// ver los propios, pero igual filtramos por user_id — defensa en profundidad).
+export async function obtenerDB(): Promise<DB> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { clientes: [], proyectos: [], pagos: [] };
+
+  const [{ data: clientesRaw }, { data: proyectosRaw }, { data: pagosRaw }] = await Promise.all([
+    supabase.from('clients').select('id, nombre, telefono, moneda, created_at').eq('user_id', user.id),
+    supabase.from('projects').select('id, client_id, nombre, precio_total, fecha_promesa').eq('user_id', user.id),
+    supabase.from('payments').select('id, project_id, monto, fecha').eq('user_id', user.id),
+  ]);
+
+  const clientes: Cliente[] = (clientesRaw ?? []).map((c) => ({
+    id: c.id,
+    nombre: c.nombre,
+    telefono: c.telefono ?? undefined,
+    moneda: c.moneda,
+    creadoEn: (c.created_at as string).slice(0, 10),
+  }));
+  const proyectos: Proyecto[] = (proyectosRaw ?? []).map((p) => ({
+    id: p.id,
+    clienteId: p.client_id,
+    nombre: p.nombre,
+    precioTotal: Number(p.precio_total),
+    fechaPromesa: p.fecha_promesa,
+  }));
+  const pagos: Pago[] = (pagosRaw ?? []).map((g) => ({
+    id: g.id,
+    proyectoId: g.project_id,
+    monto: Number(g.monto),
+    fecha: g.fecha,
+  }));
+
   return { clientes, proyectos, pagos };
-}
-
-function leerDB(): DB {
-  if (typeof window === 'undefined') return { clientes: [], proyectos: [], pagos: [] };
-  const raw = window.localStorage.getItem(KEY);
-  if (raw) {
-    try {
-      return JSON.parse(raw) as DB;
-    } catch {
-      // Datos corruptos: NUNCA sobreescribir en silencio — se respaldan bajo otra
-      // llave (recuperables a mano) antes de reiniciar con la semilla.
-      try {
-        window.localStorage.setItem(`${KEY}_corrupto_${Date.now()}`, raw);
-      } catch {
-        // localStorage sin espacio/bloqueado — igual seguimos con la semilla
-      }
-    }
-  }
-  const db = semilla();
-  // Migra el primer cliente del onboarding, si existe y no coincide con la semilla.
-  const ob = leerOnboarding();
-  if (ob.primerCliente && ob.primerCliente.nombre && !db.clientes.some((c) => c.nombre === ob.primerCliente!.nombre)) {
-    const clienteId = 'c-onb';
-    const proyectoId = 'p-onb';
-    db.clientes.unshift({ id: clienteId, nombre: ob.primerCliente.nombre, moneda: ob.moneda ?? 'USD', creadoEn: hoyISO(0) });
-    db.proyectos.unshift({
-      id: proyectoId,
-      clienteId,
-      nombre: ob.primerCliente.proyecto || 'Proyecto',
-      precioTotal: ob.primerCliente.total,
-      fechaPromesa: hoyISO(7),
-    });
-    if (ob.primerCliente.anticipo > 0) {
-      db.pagos.unshift({ id: 'g-onb', proyectoId, monto: ob.primerCliente.anticipo, fecha: hoyISO(0) });
-    }
-  }
-  guardarDB(db);
-  return db;
-}
-
-function guardarDB(db: DB): void {
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(db));
-  } catch {
-    // localStorage bloqueado — la sesión sigue, solo sin persistencia
-  }
 }
 
 export function saldoProyecto(db: DB, proyectoId: string): number {
@@ -141,13 +115,6 @@ export interface ProyectoConDatos extends Proyecto {
   estado: EstadoCobro;
 }
 
-// Nombre sin prefijo "use": no es un hook de React (no usa useState/useEffect
-// internamente) — llamarlo "useDB" confundiría al linter de reglas de hooks,
-// ya que se invoca dentro de handlers y efectos, no en el nivel superior.
-export function obtenerDB(): DB {
-  return leerDB();
-}
-
 export function proyectosConDatos(db: DB): ProyectoConDatos[] {
   return db.proyectos.map((p) => {
     const saldo = saldoProyecto(db, p.id);
@@ -161,34 +128,69 @@ export function proyectosConDatos(db: DB): ProyectoConDatos[] {
   });
 }
 
-export function agregarClienteYProyecto(
-  db: DB,
+export async function agregarClienteYProyecto(
+  _db: DB,
   datos: { nombre: string; moneda: string; proyecto: string; precioTotal: number; anticipo: number; fechaPromesa: string }
-): DB {
-  const clienteId = `c-${Date.now()}`;
-  const proyectoId = `p-${Date.now()}`;
-  const nuevo: DB = {
-    clientes: [{ id: clienteId, nombre: datos.nombre, moneda: datos.moneda, creadoEn: hoyISO(0) }, ...db.clientes],
-    proyectos: [
-      { id: proyectoId, clienteId, nombre: datos.proyecto || 'Proyecto', precioTotal: datos.precioTotal, fechaPromesa: datos.fechaPromesa },
-      ...db.proyectos,
-    ],
-    pagos: datos.anticipo > 0 ? [{ id: `g-${Date.now()}`, proyectoId, monto: datos.anticipo, fecha: hoyISO(0) }, ...db.pagos] : db.pagos,
-  };
-  guardarDB(nuevo);
-  return nuevo;
+): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+
+  const { data: cliente, error: errCliente } = await supabase
+    .from('clients')
+    .insert({ user_id: user.id, nombre: datos.nombre, moneda: datos.moneda })
+    .select('id')
+    .single();
+  if (errCliente || !cliente) throw errCliente ?? new Error('no_se_pudo_crear_cliente');
+
+  const { data: proyecto, error: errProyecto } = await supabase
+    .from('projects')
+    .insert({
+      user_id: user.id,
+      client_id: cliente.id,
+      nombre: datos.proyecto || 'Proyecto',
+      precio_total: datos.precioTotal,
+      fecha_promesa: datos.fechaPromesa,
+    })
+    .select('id')
+    .single();
+  if (errProyecto || !proyecto) throw errProyecto ?? new Error('no_se_pudo_crear_proyecto');
+
+  if (datos.anticipo > 0) {
+    await supabase.from('payments').insert({ user_id: user.id, project_id: proyecto.id, monto: datos.anticipo });
+  }
 }
 
-export function registrarPago(db: DB, proyectoId: string, monto: number): DB {
-  const nuevo: DB = {
-    ...db,
-    pagos: [{ id: `g-${Date.now()}`, proyectoId, monto, fecha: hoyISO(0) }, ...db.pagos],
-  };
-  guardarDB(nuevo);
-  return nuevo;
+export async function registrarPago(_db: DB, proyectoId: string, monto: number): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  await supabase.from('payments').insert({ user_id: user.id, project_id: proyectoId, monto });
 }
 
 export function cobradoEsteMes(db: DB): number {
   const mesActual = hoyISO(0).slice(0, 7);
   return db.pagos.filter((p) => p.fecha.slice(0, 7) === mesActual).reduce((s, p) => s + p.monto, 0);
+}
+
+// Migra el primer cliente cargado en el onboarding (sessionStorage) a la cuenta
+// real recién creada — se llama una sola vez desde /confirmar tras el login.
+export async function migrarClienteDeOnboarding(): Promise<void> {
+  const ob = leerOnboarding();
+  if (!ob.primerCliente || !ob.primerCliente.nombre) return;
+  await agregarClienteYProyecto(
+    { clientes: [], proyectos: [], pagos: [] },
+    {
+      nombre: ob.primerCliente.nombre,
+      moneda: ob.moneda ?? 'USD',
+      proyecto: ob.primerCliente.proyecto,
+      precioTotal: ob.primerCliente.total,
+      anticipo: ob.primerCliente.anticipo,
+      fechaPromesa: hoyISO(7),
+    }
+  );
 }
