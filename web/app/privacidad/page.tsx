@@ -42,8 +42,8 @@ export default function PrivacidadPage() {
           <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Tus derechos</h2>
           <p className="mt-2">
             Puedes pedir que exportemos o eliminemos tu cuenta y tus datos escribiendo a{" "}
-            <a href="mailto:hola@cobroflow.app" className="underline">
-              hola@cobroflow.app
+            <a href="mailto:soporte@cobroflow.app" className="underline">
+              soporte@cobroflow.app
             </a>
             .
           </p>

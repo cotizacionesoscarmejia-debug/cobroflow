@@ -197,7 +197,7 @@ export default function LandingPage() {
       {/* 10. FOOTER LEGAL */}
       <FooterLegal
         appName="CobroFlow"
-        soporteEmail="hola@cobroflow.app"
+        soporteEmail="soporte@cobroflow.app"
         enlaces={[
           { label: 'Privacidad', href: '/privacidad' },
           { label: 'Términos y Condiciones', href: '/terminos' },

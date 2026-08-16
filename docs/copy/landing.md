@@ -84,6 +84,6 @@ CTA_HREF = "/onboarding"
 - PS: `PS: CobroFlow calcula solo cuánto te deben, quién está atrasado y cuánto vas a recibir, con el Radar de Cobros. [b]Hoy puedes empezar gratis, sin tarjeta[/b], y ver tu primer saldo calculado en menos de 2 minutos.`
 
 ## 10. Footer
-- Soporte: `hola@cobroflow.app` (placeholder — pendiente dominio real, ver ESTADO.md)
+- Soporte: `soporte@cobroflow.app` (dominio real, conectado en Sesión 6)
 - Enlaces: Privacidad `/privacidad` · Términos y Condiciones `/terminos` · Cancelación y
   Reembolsos `/cancelacion-reembolsos` · Aviso de IA `/aviso-ia`

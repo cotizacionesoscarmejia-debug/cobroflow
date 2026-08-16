@@ -27,8 +27,8 @@ export default function CancelacionReembolsosPage() {
           <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Reembolsos</h2>
           <p className="mt-2">
             Si tuviste un cobro duplicado o un error de facturación, escríbenos a{" "}
-            <a href="mailto:hola@cobroflow.app" className="underline">
-              hola@cobroflow.app
+            <a href="mailto:soporte@cobroflow.app" className="underline">
+              soporte@cobroflow.app
             </a>{" "}
             y lo revisamos caso por caso.
           </p>

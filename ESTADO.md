@@ -190,10 +190,13 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
   requiere crear la app OAuth en Google Cloud Console + configurar el provider en Supabase.
 - **Veredictos NO LISTA en landing/onboarding/paywall/Dashboard** — ver tabla y decisión de
   cierre arriba. Detalle de cada ronda en `docs/revisiones/<pantalla>-veredicto.md`.
-- **RESUELTO** — Email de soporte en landing/footer (`hola@cobroflow.app`) ya no es placeholder:
-  el dominio `cobroflow.app` se compró y conectó en Sesión 6. Pendiente real: verificar el
-  dominio en Resend para poder enviar/recibir en `hola@cobroflow.app` de verdad (hoy Resend solo
-  entrega a la dirección con la que te registraste ahí).
+- **RESUELTO** — Email de soporte en landing/footer y páginas legales ya no es placeholder: es
+  `soporte@cobroflow.app`, con el dominio `cobroflow.app` comprado, conectado en Vercel, y
+  verificado en una cuenta de Resend dedicada a CobroFlow (separada de la de English2Hire, que ya
+  usaba su único dominio del plan gratis). SMTP de Supabase actualizado a esa cuenta.
+  ⚠️ Si ya pegaste el texto de "Cómo entrar" en la clase del área de miembros de Hotmart con el
+  correo viejo `hola@cobroflow.app`, actualízalo ahí también — ese texto vive en Hotmart, no en
+  el código, así que no se actualiza solo.
 - Las 4 páginas legales son BORRADOR — falta repaso de `47-LEGAL-FISCAL-Y-PRIVACIDAD.md` antes
   de vender de verdad. No bloquea seguir construyendo.
 - Selector de moneda del onboarding (6 chips sin preselección regional) — decisión de alcance,
