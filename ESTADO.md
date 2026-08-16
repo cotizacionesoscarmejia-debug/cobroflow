@@ -1,35 +1,20 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-16 | Sesión actual: 6
 
-⚠️ **PROYECTO DE SUPABASE MIGRADO — el de abajo (`wbmicgcwiffneuqaujef`) YA NO ES el activo.**
-El usuario perdió el acceso a esa cuenta/organización de Supabase (login de GitHub→Google roto,
-sin contraseña de respaldo). Se creó un proyecto nuevo, mismo nombre "CobroFlow", en una
-organización distinta a la que sí tiene acceso:
+✅ **PROYECTO DE SUPABASE MIGRADO Y VERIFICADO EN VIVO — el de abajo (`wbmicgcwiffneuqaujef`) YA
+NO ES el activo, es historial.** El usuario perdió el acceso a esa cuenta/organización de
+Supabase (login de GitHub→Google roto, sin contraseña de respaldo). Se creó un proyecto nuevo,
+mismo nombre "CobroFlow", en una organización distinta a la que sí tiene acceso:
 - **Org:** `ogames2003@gmail.com's Org` (antes era `ogames2003+english2hire@gmail.com's Org`)
-- **Project ref nuevo:** `lacvctwsgkehemhdhqvx` (URL `https://lacvctwsgkehemhdhqvx.supabase.co`)
+- **Project ref nuevo (ACTIVO):** `lacvctwsgkehemhdhqvx` (`https://lacvctwsgkehemhdhqvx.supabase.co`)
 - **Publishable key nueva:** `sb_publishable_9ppgb7BRF5Zo74iObIooCg_bpRe_OAG`
-- Ya aplicadas ahí AMBAS migraciones (`20260816120000_init.sql` y `20260816130000_hotmart.sql`,
-  pegadas vía clipboard — escribirlas tecla por tecla en el editor de Supabase corrompe saltos de
-  línea, usar siempre copy/paste).
-- Ya actualizado en Supabase: Site URL = `https://www.cobroflow.app`, Redirect URLs con
-  `www.cobroflow.app/**`, `cobroflow-nu.vercel.app/**`, `localhost:3200/**`.
-- Ya actualizado en Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-  `SUPABASE_URL` → apuntan al proyecto nuevo. Redeploy ya disparado.
-
-**Pendiente — SOLO el usuario puede hacerlo (nunca yo, son secretos):**
-```
-[ ] SUPABASE_SECRET_KEY en Vercel sigue siendo la del proyecto VIEJO — copiarla del proyecto
-    nuevo (Project Settings → API Keys → Secret keys) y reemplazarla en Vercel → Redeploy.
-[ ] Custom SMTP (Resend) del proyecto nuevo — no está configurado, hay que rehacerlo desde cero
-    (Authentication → Emails → SMTP Settings): host smtp.resend.com, puerto 587, username
-    "resend" literal (Supabase lo autorrellena mal con el nombre del proyecto — cambiarlo a
-    mano), password = API key de la cuenta de Resend de CobroFlow, sender soporte@cobroflow.app.
-[ ] Plantilla del Magic Link (Authentication → Emails → Magic link or OTP → Source) — reemplazar
-    {{ .ConfirmationURL }} por {{ .SiteURL }}/confirmar?token_hash={{ .TokenHash }}&type=email&next=/app
-[ ] Reiniciar el proyecto (Settings → General → Restart project) después de configurar el SMTP —
-    sin esto Auth no toma la config nueva (ya pasó una vez en el proyecto viejo).
-[ ] Probar el login real de punta a punta con la cuenta nueva antes de dar por cerrado.
-```
+- Ambas migraciones aplicadas (`20260816120000_init.sql` y `20260816130000_hotmart.sql`, pegadas
+  vía clipboard — escribirlas tecla por tecla en el editor de Supabase corrompe saltos de línea,
+  usar siempre copy/paste).
+- Site URL/Redirect URLs, variables de Vercel (URL + publishable + secret key), SMTP de Resend,
+  plantilla del Magic Link, y reinicio del proyecto — todo reconfigurado por el usuario.
+- **Verificado en vivo por el usuario (2026-08-16): login real en `cobroflow.app` → correo →
+  `/confirmar` → Dashboard con datos reales. Ciclo completo funcionando en el proyecto nuevo.**
 
 ⏸️ CHECKPOINT ANTERIOR (proyecto viejo, ref `wbmicgcwiffneuqaujef` — ya no es el activo, dejado
 como referencia histórica de lo que se hizo y por qué):
