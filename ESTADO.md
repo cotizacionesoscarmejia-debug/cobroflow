@@ -12,6 +12,25 @@ enlace mágico (Supabase + Resend por SMTP) probado en vivo: login → correo re
 Verificado con el usuario en vivo: el Dashboard muestra su correo/iniciales reales (ya no el
 "Carlos Rodríguez" de prueba). Ciclo completo confirmado extremo a extremo.
 
+**Desplegado en Vercel**: `https://cobroflow-nu.vercel.app` (proyecto `cobroflow`, team OM
+SOLUTIONS PROYECTS). Root Directory = `web`. Supabase Site URL/Redirect URLs actualizadas a esa
+URL (mantiene también `localhost:3200` para seguir developando local).
+
+**Hotmart conectado**: un solo producto "CobroFlow" (ID `8326549`) con 2 ofertas — Pro
+(`off=s6j82uzz`, $7.99/mes) y Premium (`off=avoatd7z`, $14.99/mes). Links de pago reales en
+`lib/hotmart-links.ts`. Webhook registrado en Hotmart apuntando a
+`https://cobroflow-nu.vercel.app/api/webhooks/hotmart` con 6 eventos (Compra aprobada/completa/
+reembolsada, Chargeback, Compra atrasada, Cancelación de Suscripción). Migración
+`20260816130000_hotmart.sql` aplicada (tablas `processed_events`/`webhook_log` + RPC
+`apply_hotmart_event`). Verificado con el botón "Enviar prueba" de Hotmart: pasó de 500 (faltaba
+`SUPABASE_SECRET_KEY` en Vercel) a 400 — el 400 es CORRECTO: ese botón manda un producto de
+prueba genérico de Hotmart ("Produto test postback2"), no datos reales de CobroFlow, y nuestra
+defensa anti-repetición lo rechaza por tener fecha vieja. Confirma que auth (hottok) + conexión +
+seguridad ya funcionan. **Pendiente antes de vender de verdad**: una compra REAL (sandbox o
+reembolsable) de Pro y de Premium para confirmar los nombres exactos de campo del payload real
+(`data.purchase.offer.code`, `data.product.id` — anotados como sin verificar en
+`lib/membership-fsm.ts`) — es el paso obligatorio de `18-VENTA-HOTMART.md` antes de vender.
+
 ⏸️ CHECKPOINT ANTERIOR — Sesiones 3-5: landing, onboarding, paywall, login y la app interna
 (Dashboard, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente, Cuenta) construidas,
 compilan limpio y se probaron de punta a punta con `localStorage` (ya migrado a Supabase arriba).
@@ -142,12 +161,14 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
 - Sesión 8: Fase 2 (gastos/reportes/metas) y Fase 3 (Premium: proyecciones/IA) + adquisición.
 
 ## Problemas conocidos ⚠️
-- **RESUELTO — exposición de clave (2026-08-16):** la `SUPABASE_SECRET_KEY` quedó expuesta en el
-  chat vía el auto-diff que el sistema muestra al modificarse un archivo que el agente ya había
-  tocado antes (mismo patrón ya documentado en el proyecto English2Hire). Se le avisó al usuario
-  de inmediato para rotarla. **Patrón que evita esto:** que el USUARIO cree/edite `.env.local`
-  directamente sin que el agente lo toque primero — o pegar la variable con `$env:NOMBRE=` en la
-  misma terminal donde corre `npm run dev`, nunca en un archivo que el agente ya abrió.
+- **RESUELTO — exposición de clave, dos veces (2026-08-16):** la `SUPABASE_SECRET_KEY` quedó
+  expuesta en el chat DOS veces en esta sesión. (1) vía el auto-diff que el sistema muestra al
+  modificarse un archivo que el agente ya había tocado antes. (2) el agente mismo leyó
+  `.env.local` con la herramienta Read para preparar las variables de Vercel — error propio, no
+  del usuario. Ambas veces se avisó de inmediato y el usuario rotó la clave. **Regla dura desde
+  ahora: el agente NUNCA vuelve a abrir/leer `.env.local` bajo ninguna excusa** (ni para "revisar
+  qué hay", ni para copiar valores a otro lado) — si necesita que un valor llegue a otro sistema
+  (Vercel, etc.), se lo pide al USUARIO para que lo copie él mismo desde su editor.
 - **RESUELTO — SMTP/Resend no enviaba el enlace mágico (2026-08-16):** Supabase requiere SMTP
   personalizado para poder editar el "Source" de las plantillas de correo. Se conectó Resend
   (dominio de prueba `onboarding@resend.dev`, solo entrega a la dirección con la que te registras
@@ -176,8 +197,13 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
   reusar el selector de 11 monedas del onboarding — homologar en Sesión 6.
 
 ## Pendientes del usuario (acciones que el usuario debe hacer)
-- [ ] Ninguna todavía — llegan en la fase de servicios externos (Sesión 6): Supabase, Stripe,
-  Vercel, Resend, dominio.
+- [ ] Hacer UNA compra real de Pro y UNA de Premium (puede reembolsarlas después) para confirmar
+  que el webhook sube el plan correcto — el botón "Enviar prueba" de Hotmart no sirve para esto
+  (usa un producto de prueba genérico, no el real).
+- [ ] Comprar el dominio propio de CobroFlow y conectarlo a Vercel (hoy vive en
+  `cobroflow-nu.vercel.app`).
+- [ ] Verificar un dominio propio en Resend antes de vender — hoy solo entrega a la dirección con
+  la que te registraste en Resend.
 
 ## Notas para la próxima sesión
 - Proyecto 100% separado de English2Hire — carpeta propia `cobroflow/`, su propio ESTADO.md,
