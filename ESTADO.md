@@ -12,9 +12,12 @@ enlace mágico (Supabase + Resend por SMTP) probado en vivo: login → correo re
 Verificado con el usuario en vivo: el Dashboard muestra su correo/iniciales reales (ya no el
 "Carlos Rodríguez" de prueba). Ciclo completo confirmado extremo a extremo.
 
-**Desplegado en Vercel**: `https://cobroflow-nu.vercel.app` (proyecto `cobroflow`, team OM
-SOLUTIONS PROYECTS). Root Directory = `web`. Supabase Site URL/Redirect URLs actualizadas a esa
-URL (mantiene también `localhost:3200` para seguir developando local).
+**Desplegado en Vercel**: proyecto `cobroflow` (team OM SOLUTIONS PROYECTS), Root Directory =
+`web`. **Dominio propio comprado y conectado: `cobroflow.app`** (vía Vercel, $9.99/año,
+autorenovación activa) → `cobroflow.app` redirige 308 a `www.cobroflow.app` (producción real).
+El dominio de respaldo `cobroflow-nu.vercel.app` se mantiene funcionando también. Supabase Site
+URL = `https://www.cobroflow.app`; Redirect URLs incluye `www.cobroflow.app/**`,
+`cobroflow-nu.vercel.app/**` y `localhost:3200/**` (este último para seguir developando local).
 
 **Hotmart conectado**: un solo producto "CobroFlow" (ID `8326549`) con 2 ofertas — Pro
 (`off=s6j82uzz`, $7.99/mes) y Premium (`off=avoatd7z`, $14.99/mes). Links de pago reales en
@@ -187,8 +190,10 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
   requiere crear la app OAuth en Google Cloud Console + configurar el provider en Supabase.
 - **Veredictos NO LISTA en landing/onboarding/paywall/Dashboard** — ver tabla y decisión de
   cierre arriba. Detalle de cada ronda en `docs/revisiones/<pantalla>-veredicto.md`.
-- Email de soporte en landing/footer es `hola@cobroflow.app` — PLACEHOLDER, dominio real
-  pendiente de comprar (Sesión 6).
+- **RESUELTO** — Email de soporte en landing/footer (`hola@cobroflow.app`) ya no es placeholder:
+  el dominio `cobroflow.app` se compró y conectó en Sesión 6. Pendiente real: verificar el
+  dominio en Resend para poder enviar/recibir en `hola@cobroflow.app` de verdad (hoy Resend solo
+  entrega a la dirección con la que te registraste ahí).
 - Las 4 páginas legales son BORRADOR — falta repaso de `47-LEGAL-FISCAL-Y-PRIVACIDAD.md` antes
   de vender de verdad. No bloquea seguir construyendo.
 - Selector de moneda del onboarding (6 chips sin preselección regional) — decisión de alcance,
@@ -200,10 +205,8 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
 - [ ] Hacer UNA compra real de Pro y UNA de Premium (puede reembolsarlas después) para confirmar
   que el webhook sube el plan correcto — el botón "Enviar prueba" de Hotmart no sirve para esto
   (usa un producto de prueba genérico, no el real).
-- [ ] Comprar el dominio propio de CobroFlow y conectarlo a Vercel (hoy vive en
-  `cobroflow-nu.vercel.app`).
-- [ ] Verificar un dominio propio en Resend antes de vender — hoy solo entrega a la dirección con
-  la que te registraste en Resend.
+- [ ] Verificar el dominio `cobroflow.app` en Resend antes de vender — hoy solo entrega a la
+  dirección con la que te registraste en Resend.
 
 ## Notas para la próxima sesión
 - Proyecto 100% separado de English2Hire — carpeta propia `cobroflow/`, su propio ESTADO.md,
