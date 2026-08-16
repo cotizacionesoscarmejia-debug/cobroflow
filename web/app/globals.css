@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@import "../components/landing/tokens.css";
+
+:root {
+  /* next/font ya optimizó y cargó Sora/Wix Madefor Text — se los pasamos a los
+     tokens del kit por variable, en vez de declarar el nombre literal (evita un
+     segundo fetch fuera de next/font). */
+  --font-display: var(--font-sora), 'Segoe UI', sans-serif;
+  --font-body: var(--font-wix-madefor), 'Segoe UI', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+/* Foco visible SOLO con teclado (10-DESIGN-TOKENS.md) — el kit de landing no lo
+   traía en sus primitivos compartidos (ui.tsx); con 5+ CTAs idénticos en la
+   página, un usuario de teclado necesita distinguir cuál tiene el foco. */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}

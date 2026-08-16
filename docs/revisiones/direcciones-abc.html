@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CobroFlow — Direcciones de arte A/B/C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Wix+Madefor+Text:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Onest:wght@400;500;600;700;800&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page-bg-1:#0B0D10; --page-bg-2:#15181C;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:48px 24px 96px;
+    background:
+      radial-gradient(1100px 520px at 18% -8%, rgba(120,190,150,.14), transparent 60%),
+      radial-gradient(900px 480px at 88% 8%, rgba(210,160,90,.10), transparent 55%),
+      linear-gradient(180deg, var(--page-bg-1), var(--page-bg-2) 60%);
+    font-family: 'Wix Madefor Text', sans-serif;
+    color:#EDEFF2;
+    min-height:100vh;
+  }
+  .top{max-width:1180px;margin:0 auto 44px;text-align:center;}
+  .top h1{font-family:'Sora',sans-serif;font-weight:800;font-size:30px;letter-spacing:-.5px;margin:0 0 10px;}
+  .top p{font-size:15px;color:#B7BCC4;margin:0 0 18px;max-width:640px;margin-inline:auto;line-height:1.55;}
+  .salidas{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;font-size:13px;color:#9BA1AC;}
+  .salidas span{background:#1D2125;border:1px solid #2A2F35;padding:6px 12px;border-radius:999px;}
+
+  .row{max-width:1180px;margin:0 auto;display:flex;gap:28px;justify-content:center;flex-wrap:wrap;}
+  .opcion{width:346px;display:flex;flex-direction:column;align-items:center;gap:18px;}
+
+  /* ===== chasis de telefono ===== */
+  .device{
+    width:346px;border-radius:44px;padding:14px;
+    background:linear-gradient(160deg,#2b2f33,#0d0e10);
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,.04) inset;
+  }
+  .screen{
+    width:100%;border-radius:32px;overflow:hidden;position:relative;
+    background:var(--bg); color:var(--text);
+    font-family:var(--font-body);
+  }
+  .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:90px;height:22px;background:#0d0e10;border-radius:14px;z-index:5;}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:16px 22px 4px;font-family:var(--font-body);font-weight:600;font-size:13px;color:var(--text);}
+  .statusicons{display:flex;gap:5px;align-items:center;}
+  .sb-dot{width:3px;height:9px;background:currentColor;border-radius:1px;}
+  .sb-wifi{width:15px;height:11px;border:1.6px solid currentColor;border-radius:3px 3px 0 0;border-bottom:none;opacity:.9}
+  .sb-batt{width:22px;height:11px;border:1.6px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+  .sb-batt::after{content:'';position:absolute;inset:2px;width:70%;background:currentColor;border-radius:1px;}
+  .home-indicator{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:3px;background:var(--text);opacity:.35;}
+
+  .content{padding:14px 20px 90px;min-height:600px;}
+  .content.landing{min-height:420px;padding-bottom:40px;}
+
+  h1,h2,h3{font-family:var(--font-display);margin:0;}
+  .icon{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;display:block;}
+  .chip{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    font-family:var(--font-display);font-weight:700;font-size:14px;
+    padding:13px 18px;border-radius:var(--radius-btn);border:none;cursor:default;
+    background:var(--accent); color:var(--accent-ink);
+    box-shadow:0 10px 20px -8px var(--accent-shadow), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+
+  .check-custom{width:16px;height:16px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .check-custom svg{width:9px;height:9px;stroke:var(--accent-ink);stroke-width:3;}
+
+  .hairline{height:1px;background:linear-gradient(90deg, transparent, var(--accent) 35%, transparent);opacity:.5;border:none;margin:16px 0;}
+
+  /* ===== ficha de opcion ===== */
+  .ficha{width:100%;background:#15181C;border:1px solid #262B31;border-radius:16px;padding:18px 20px;}
+  .ficha .badge{display:inline-block;font-family:'Sora',sans-serif;font-weight:800;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#0B0D10;background:#EDEFF2;padding:4px 10px;border-radius:999px;margin-bottom:10px;}
+  .ficha h3{font-family:'Sora',sans-serif;font-size:17px;color:#fff;margin-bottom:6px;}
+  .ficha p{font-size:12.5px;line-height:1.55;color:#AEB4BD;margin:0 0 10px;}
+  .ficha .hipotesis{font-size:12px;color:#8FE3B4;background:rgba(143,227,180,.08);border:1px solid rgba(143,227,180,.18);border-radius:10px;padding:8px 10px;margin-bottom:12px;line-height:1.5;}
+  .paleta{display:flex;gap:6px;margin-bottom:10px;}
+  .sw{width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,255,255,.12);}
+  .tipos{display:flex;flex-direction:column;gap:4px;}
+  .tipos .esp{font-size:19px;color:#fff;}
+  .tipos .lbl{font-size:10.5px;color:#767C86;letter-spacing:.03em;}
+
+  /* ============ OPCION A — Radar en Calma ============ */
+  .opt-a{
+    --bg:#FAF6EF; --surface:#FFFFFF; --surface-sunken:#F1ECE1;
+    --text:#241E14; --text-2:#7A7161;
+    --accent:#1B8A5A; --accent-ink:#FBFBF6; --accent-shadow:rgba(27,138,90,.45);
+    --accent2:#C97A2E;
+    --radius-card:22px; --radius-btn:16px;
+    --font-display:'Sora',sans-serif; --font-body:'Wix Madefor Text',sans-serif;
+  }
+  .opt-a .greet{font-size:13px;color:var(--text-2);margin-bottom:2px;}
+  .opt-a .name{font-family:var(--font-display);font-weight:700;font-size:19px;margin-bottom:16px;}
+  .opt-a .hero-card{
+    background:linear-gradient(160deg,#1B8A5A,#146B45);
+    border-radius:var(--radius-card); padding:20px; color:#F3FBF6; position:relative; overflow:hidden;
+    box-shadow:0 16px 30px -14px rgba(27,138,90,.55);
+  }
+  .opt-a .hero-card::after{content:'';position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .opt-a .hero-lbl{font-size:12px;opacity:.85;margin-bottom:4px;}
+  .opt-a .hero-num{font-family:var(--font-display);font-weight:800;font-size:38px;letter-spacing:-1px;}
+  .opt-a .hero-sub{display:flex;align-items:center;gap:6px;font-size:12.5px;opacity:.9;margin-top:8px;}
+  .opt-a .kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .opt-a .kpi{background:var(--surface);border-radius:16px;padding:12px 14px;border:1px solid #EFE9DC;}
+  .opt-a .kpi .lbl{font-size:11px;color:var(--text-2);display:flex;align-items:center;gap:5px;margin-bottom:6px;}
+  .opt-a .kpi .val{font-family:var(--font-display);font-weight:700;font-size:19px;}
+  .opt-a .section-title{font-family:var(--font-display);font-weight:700;font-size:14.5px;margin:20px 0 10px;display:flex;justify-content:space-between;align-items:center;}
+  .opt-a .section-title span.tag{font-family:var(--font-body);font-weight:600;font-size:11px;color:var(--accent2);background:rgba(201,122,46,.12);padding:3px 8px;border-radius:999px;}
+  /* recibo perforado — dispositivo ownable A */
+  .opt-a .recibo{
+    background:var(--surface); border-radius:14px; padding:14px 14px 14px 16px; margin-bottom:10px;
+    display:flex; align-items:center; gap:12px; position:relative;
+    border:1px solid #EFE9DC;
+    background-image: radial-gradient(circle 4px, var(--bg) 4px, transparent 4.5px);
+    background-position: -6px 50%; background-size: 100% 100%; background-repeat:no-repeat;
+    box-shadow:2px 2px 0 rgba(36,30,20,.03);
+  }
+  .opt-a .recibo::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background-image:repeating-linear-gradient(180deg,#DDD5C2 0 4px,transparent 4px 9px);}
+  .opt-a .avatar{width:38px;height:38px;border-radius:11px;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--text-2);flex-shrink:0;}
+  .opt-a .rmid{flex:1;min-width:0;}
+  .opt-a .rmid .cli{font-weight:700;font-size:13.5px;}
+  .opt-a .rmid .proy{font-size:11.5px;color:var(--text-2);}
+  .opt-a .rside{text-align:right;}
+  .opt-a .rside .monto{font-family:var(--font-display);font-weight:700;font-size:14px;}
+  .opt-a .estado{font-size:10px;font-weight:700;padding:3px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;margin-top:3px;}
+  .opt-a .estado.rojo{background:#FBE7E4;color:#B3402C;}
+  .opt-a .estado.amb{background:#FBF0DD;color:#946015;}
+  .opt-a .estado.verde{background:#E4F3EA;color:#1B8A5A;}
+  .opt-a .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+  .opt-a .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid #EFE9DC;display:flex;justify-content:space-around;padding:12px 8px 22px;}
+  .opt-a .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-2);font-size:9.5px;}
+  .opt-a .navitem.active{color:var(--accent);}
+  .opt-a .fab{position:absolute;bottom:70px;right:18px;width:48px;height:48px;border-radius:16px;background:var(--accent2);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px -6px rgba(201,122,46,.5);}
+  .opt-a .fab svg{stroke:#fff;}
+  /* landing hero A */
+  .opt-a .lhero{padding:36px 22px;}
+  .opt-a .kicker{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--accent);background:rgba(27,138,90,.1);padding:6px 12px;border-radius:999px;margin-bottom:16px;}
+  .opt-a .lhero h2{font-size:27px;font-weight:800;line-height:1.12;letter-spacing:-.5px;margin-bottom:12px;}
+  .opt-a .lhero h2 em{font-style:normal;color:var(--accent);}
+  .opt-a .lhero p{font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px;}
+  .opt-a .mock{background:var(--surface);border-radius:18px;border:1px solid #EFE9DC;padding:16px;margin-top:22px;box-shadow:0 20px 40px -20px rgba(36,30,20,.2);}
+
+  /* ============ OPCION B — Radar Preciso ============ */
+  .opt-b{
+    --bg:#0E1210; --surface:#151B17; --surface-sunken:#0A0D0B;
+    --text:#EAEFEA; --text-2:#8A9691;
+    --accent:#39D98A; --accent-ink:#06170F; --accent-shadow:rgba(57,217,138,.35);
+    --accent2:#E0B458;
+    --radius-card:14px; --radius-btn:10px;
+    --font-display:'Instrument Sans',sans-serif; --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  .opt-b .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .opt-b .topbar .greet{font-size:12px;color:var(--text-2);}
+  .opt-b .topbar .name{font-family:var(--font-display);font-weight:600;font-size:16px;}
+  .opt-b .bellchip{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid #202824;display:flex;align-items:center;justify-content:center;color:var(--text-2);position:relative;}
+  .opt-b .bellchip::after{content:'';position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--accent2);}
+  .opt-b .bento{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;}
+  .opt-b .bcard{background:var(--surface);border:1px solid #202824;border-radius:var(--radius-card);padding:14px;}
+  .opt-b .bcard.big{grid-row:span 2;}
+  .opt-b .blbl{font-size:10.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+  .opt-b .bval{font-family:var(--font-mono);font-weight:600;font-size:24px;letter-spacing:-.5px;}
+  .opt-b .bcard.big .bval{font-size:30px;}
+  .opt-b .delta{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:11.5px;font-weight:600;color:var(--accent);margin-top:6px;}
+  .opt-b .delta.down{color:#F2795A;}
+  .opt-b .sparkline{margin-top:10px;height:34px;}
+  .opt-b .rule{border-left:2px solid var(--accent);padding-left:10px;margin-top:10px;}
+  .opt-b .section-title{font-family:var(--font-display);font-weight:600;font-size:13px;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 10px;}
+  .opt-b .row-item{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--surface);border:1px solid #202824;border-radius:12px;margin-bottom:7px;}
+  .opt-b .row-item .rdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .opt-b .row-item .rdot.rojo{background:#F2795A;box-shadow:0 0 0 3px rgba(242,121,90,.15);}
+  .opt-b .row-item .rdot.amb{background:var(--accent2);box-shadow:0 0 0 3px rgba(224,180,88,.15);}
+  .opt-b .row-item .rmid{flex:1;min-width:0;}
+  .opt-b .row-item .cli{font-size:12.5px;font-weight:600;}
+  .opt-b .row-item .meta{font-family:var(--font-mono);font-size:10.5px;color:var(--text-2);}
+  .opt-b .row-item .monto{font-family:var(--font-mono);font-weight:600;font-size:13px;}
+  .opt-b .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid #202824;display:flex;justify-content:space-around;padding:12px 8px 22px;}
+  .opt-b .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-2);font-size:9.5px;}
+  .opt-b .navitem.active{color:var(--accent);}
+  /* landing hero B */
+  .opt-b .lhero{padding:34px 22px;}
+  .opt-b .kicker{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--accent);border:1px solid rgba(57,217,138,.3);padding:5px 10px;border-radius:6px;margin-bottom:16px;}
+  .opt-b .lhero h2{font-size:25px;font-weight:600;line-height:1.16;letter-spacing:-.3px;margin-bottom:12px;}
+  .opt-b .lhero h2 em{font-style:normal;color:var(--accent);}
+  .opt-b .lhero p{font-size:13px;color:var(--text-2);line-height:1.55;margin-bottom:20px;}
+  .opt-b .mock{background:var(--surface);border-radius:14px;border:1px solid #202824;padding:14px;margin-top:22px;}
+
+  /* ============ OPCION C — Radar Cercano ============ */
+  .opt-c{
+    --bg:#F7F2E7; --surface:#FFFDF7; --surface-sunken:#EFE7D4;
+    --text:#2B2416; --text-2:#8A7F68;
+    --accent:#3D6B4F; --accent-ink:#F7FBF4; --accent-shadow:rgba(61,107,79,.4);
+    --accent2:#BD5B33;
+    --radius-card:24px; --radius-btn:999px;
+    --font-display:'Onest',sans-serif; --font-body:'Familjen Grotesk',sans-serif;
+  }
+  .opt-c .greet{font-size:13px;color:var(--text-2);}
+  .opt-c .name{font-family:var(--font-display);font-weight:700;font-size:19px;margin-bottom:6px;}
+  .opt-c .submeta{font-size:12px;color:var(--text-2);margin-bottom:16px;}
+  .opt-c .stat-strip{display:flex;gap:16px;padding:14px 4px 16px;border-bottom:1px dashed #DED2B4;margin-bottom:14px;}
+  .opt-c .stat{flex:1;}
+  .opt-c .stat .lbl{font-size:10.5px;color:var(--text-2);margin-bottom:3px;}
+  .opt-c .stat .val{font-family:var(--font-display);font-weight:700;font-size:17px;}
+  .opt-c .stat .val.warn{color:var(--accent2);}
+  .opt-c .section-title{font-family:var(--font-display);font-weight:700;font-size:15px;margin:6px 0 12px;}
+  /* avatar-chip con anillo de estado — dispositivo ownable C */
+  .opt-c .contacto{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid #EFE7D4;}
+  .opt-c .ring{width:46px;height:46px;border-radius:50%;padding:2.5px;flex-shrink:0;}
+  .opt-c .ring.rojo{background:conic-gradient(#C0492F 0 100%);}
+  .opt-c .ring.amb{background:conic-gradient(#BD8A2A 0 100%);}
+  .opt-c .ring.verde{background:conic-gradient(#3D6B4F 0 100%);}
+  .opt-c .ring .av{width:100%;height:100%;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--text);border:2px solid var(--bg);}
+  .opt-c .cmid{flex:1;min-width:0;}
+  .opt-c .cmid .cli{font-weight:700;font-size:13.5px;}
+  .opt-c .cmid .nota{font-size:11.5px;color:var(--text-2);}
+  .opt-c .cside{text-align:right;}
+  .opt-c .cside .monto{font-family:var(--font-display);font-weight:700;font-size:14.5px;}
+  .opt-c .cside .dias{font-size:10.5px;color:var(--accent2);font-weight:600;}
+  .opt-c .cside .dias.ok{color:var(--accent);}
+  .opt-c .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid #EFE7D4;display:flex;justify-content:space-around;padding:12px 8px 22px;}
+  .opt-c .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-2);font-size:9.5px;}
+  .opt-c .navitem.active{color:var(--accent);}
+  .opt-c .fab{position:absolute;bottom:70px;right:18px;width:50px;height:50px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px -6px var(--accent-shadow);}
+  .opt-c .fab svg{stroke:var(--accent-ink);}
+  /* landing hero C */
+  .opt-c .lhero{padding:36px 22px;}
+  .opt-c .kicker{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--accent-ink);background:var(--accent2);padding:6px 13px;border-radius:999px;margin-bottom:16px;}
+  .opt-c .lhero h2{font-size:26px;font-weight:700;line-height:1.18;margin-bottom:12px;}
+  .opt-c .lhero h2 em{font-style:normal;color:var(--accent2);}
+  .opt-c .lhero p{font-size:13.5px;color:var(--text-2);line-height:1.58;margin-bottom:20px;}
+  .opt-c .mock{background:var(--surface);border-radius:20px;border:1px solid #EFE7D4;padding:16px;margin-top:22px;box-shadow:0 20px 40px -20px rgba(43,36,22,.18);}
+
+  @media (max-width:768px){ .row{flex-direction:column;align-items:center;} }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Elige la dirección visual de CobroFlow</h1>
+  <p>3 fusiones distintas, aplicadas a tu Dashboard real y al hero de tu página de ventas. Ábrelo con conexión a internet para ver las tipografías cargadas.</p>
+  <div class="salidas">
+    <span>1 · elige A, B o C</span>
+    <span>2 · combina lo mejor ("la B pero con la tipografía de la A")</span>
+    <span>3 · pide otras 3</span>
+    <span>4 · ajusta un detalle</span>
+  </div>
+</div>
+
+<div class="row">
+
+  <!-- ============ OPCION A ============ -->
+  <div class="opcion opt-a">
+    <div class="device">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar">
+          <span>9:41</span>
+          <div class="statusicons"><span class="sb-dot"></span><span class="sb-dot" style="height:11px"></span><span class="sb-dot" style="height:13px"></span><span class="sb-wifi"></span><span class="sb-batt"></span></div>
+        </div>
+        <div class="content">
+          <div class="greet">Buenos días</div>
+          <div class="name">Carlos Rodríguez</div>
+
+          <div class="hero-card">
+            <div class="hero-lbl">Cobrado este mes</div>
+            <div class="hero-num tabular">$1,245</div>
+            <div class="hero-sub">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></svg>
+              18% más que el mes pasado
+            </div>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="lbl"><svg class="icon" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Por cobrar</div>
+              <div class="val tabular">$740</div>
+            </div>
+            <div class="kpi">
+              <div class="lbl"><svg class="icon" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Atrasado</div>
+              <div class="val tabular" style="color:#B3402C">$225</div>
+            </div>
+          </div>
+
+          <div class="section-title">Necesitan tu atención <span class="tag">3</span></div>
+
+          <div class="recibo">
+            <div class="avatar">CN</div>
+            <div class="rmid"><div class="cli">Clínica Nova</div><div class="proy">Página Web Profesional</div></div>
+            <div class="rside"><div class="monto tabular">$225</div><div class="estado rojo"><span class="dot"></span>1 día atraso</div></div>
+          </div>
+          <div class="recibo">
+            <div class="avatar">RV</div>
+            <div class="rmid"><div class="cli">Restaurante Verde</div><div class="proy">Landing Page</div></div>
+            <div class="rside"><div class="monto tabular">$450</div><div class="estado amb"><span class="dot"></span>Vence hoy</div></div>
+          </div>
+          <div class="recibo">
+            <div class="avatar">ML</div>
+            <div class="rmid"><div class="cli">María López</div><div class="proy">Automatización</div></div>
+            <div class="rside"><div class="monto tabular">$600</div><div class="estado verde"><span class="dot"></span>Al día</div></div>
+          </div>
+
+          <div class="fab"><svg class="icon" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M12 5v14M5 12h14"/></svg></div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>Inicio</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clientes</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>Cobros</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stats</div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="device">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><div class="statusicons"><span class="sb-wifi"></span><span class="sb-batt"></span></div></div>
+        <div class="content landing">
+          <div class="lhero">
+            <span class="kicker"><svg class="icon" width="13" height="13" viewBox="0 0 24 24"><path d="M12 2 15 9l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/></svg>Radar de Cobros</span>
+            <h2>Cobra lo que te deben. <em>Controla</em> lo que ganas.</h2>
+            <p>CobroFlow te muestra cuánto has cobrado, cuánto te deben y qué clientes necesitan seguimiento — todo desde un solo lugar.</p>
+            <button class="btn">Empieza gratis <svg class="icon" width="15" height="15" viewBox="0 0 24 24" style="stroke:var(--accent-ink)"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></button>
+            <div class="mock">
+              <div class="hairline" style="margin:0 0 10px"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div><div style="font-size:10.5px;color:var(--text-2)">Dinero esperado (30 días)</div><div style="font-family:var(--font-display);font-weight:800;font-size:22px" class="tabular">$1,460</div></div>
+                <div class="check-custom" style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="ficha">
+      <span class="badge">Opción A</span>
+      <h3>Radar en calma</h3>
+      <p>Fusión Nubank + Bonsai: claro, cálido y sin números fríos — el saldo del mes como héroe y cada cliente pendiente como un recibo real, con su borde perforado. La app se siente como un asistente tranquilo, no como una hoja de cálculo.</p>
+      <div class="hipotesis">✅ Convierte mejor con freelancers que sienten ansiedad al perseguir pagos: el tono cálido y el "recibo" (objeto conocido) bajan la fricción de algo que hoy les da pena hacer.</div>
+      <div class="paleta">
+        <div class="sw" style="background:#FAF6EF"></div><div class="sw" style="background:#1B8A5A"></div><div class="sw" style="background:#C97A2E"></div><div class="sw" style="background:#241E14"></div>
+      </div>
+      <div class="tipos">
+        <div><span class="esp" style="font-family:'Sora',sans-serif;font-weight:700">Sora</span> <span class="lbl">— display</span></div>
+        <div><span class="esp" style="font-family:'Wix Madefor Text',sans-serif;font-size:15px">Wix Madefor Text</span> <span class="lbl">— body</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OPCION B ============ -->
+  <div class="opcion opt-b">
+    <div class="device">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><div class="statusicons"><span class="sb-wifi"></span><span class="sb-batt"></span></div></div>
+        <div class="content">
+          <div class="topbar">
+            <div><div class="greet">Tu negocio hoy</div><div class="name">Carlos · CR Digital</div></div>
+            <div class="bellchip"><svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/></svg></div>
+          </div>
+
+          <div class="bento">
+            <div class="bcard big">
+              <div class="blbl"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/></svg>Cobrado</div>
+              <div class="bval tabular">$1,245</div>
+              <div class="delta"><svg class="icon" width="11" height="11" viewBox="0 0 24 24"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/></svg>+18%</div>
+              <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none"><polyline points="0,32 30,28 60,30 90,18 120,22 150,10 180,14 200,6" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
+            </div>
+            <div class="bcard">
+              <div class="blbl">Pendiente</div>
+              <div class="bval tabular" style="font-size:19px">$740</div>
+            </div>
+            <div class="bcard">
+              <div class="blbl">Atrasado</div>
+              <div class="bval tabular" style="font-size:19px;color:#F2795A">$225</div>
+              <div class="delta down"><svg class="icon" width="11" height="11" viewBox="0 0 24 24"><path d="m22 17-8.5-8.5-5 5L2 7"/></svg>2 clientes</div>
+            </div>
+          </div>
+
+          <div class="rule">
+            <div class="blbl">Próximos 30 días</div>
+            <div class="bval tabular" style="font-size:20px">$1,460</div>
+          </div>
+
+          <div class="section-title">Necesitan seguimiento</div>
+          <div class="row-item">
+            <span class="rdot rojo"></span>
+            <div class="rmid"><div class="cli">Clínica Nova</div><div class="meta">atraso · 1 día</div></div>
+            <div class="monto tabular">$225</div>
+          </div>
+          <div class="row-item">
+            <span class="rdot amb"></span>
+            <div class="rmid"><div class="cli">Restaurante Verde</div><div class="meta">vence · hoy</div></div>
+            <div class="monto tabular">$450</div>
+          </div>
+          <div class="row-item">
+            <span class="rdot" style="background:var(--accent)"></span>
+            <div class="rmid"><div class="cli">María López</div><div class="meta">próximo · 12 días</div></div>
+            <div class="monto tabular">$600</div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>Inicio</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clientes</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/></svg>Cobros</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stats</div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="device">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><div class="statusicons"><span class="sb-wifi"></span><span class="sb-batt"></span></div></div>
+        <div class="content landing">
+          <div class="lhero">
+            <span class="kicker">/ radar-de-cobros</span>
+            <h2>Cobra lo que te deben. <em>Controla</em> lo que ganas.</h2>
+            <p>Panel exacto de cuánto entró, cuánto falta y qué cliente está atrasado — sin abrir una hoja de cálculo.</p>
+            <button class="btn">Empieza gratis →</button>
+            <div class="mock">
+              <div class="blbl">Dinero esperado</div>
+              <div class="bval tabular" style="font-size:24px">$1,460</div>
+              <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none" style="margin-top:8px"><polyline points="0,30 40,26 80,20 120,22 160,12 200,8" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="ficha">
+      <span class="badge">Opción B</span>
+      <h3>Radar preciso</h3>
+      <p>Fusión Revolut + Linear: oscuro, sobrio y denso en datos — bento de KPIs, numerales tabulares y una regla de acento que cuelga cada cifra clave. Para quien quiere ver su negocio como un panel de control, no como una lista de pendientes.</p>
+      <div class="hipotesis">✅ Convierte mejor con perfiles técnicos (devs, consultores) que ya usan dashboards a diario y leen "denso y preciso" como profesional, no como frío.</div>
+      <div class="paleta">
+        <div class="sw" style="background:#0E1210"></div><div class="sw" style="background:#39D98A"></div><div class="sw" style="background:#E0B458"></div><div class="sw" style="background:#EAEFEA"></div>
+      </div>
+      <div class="tipos">
+        <div><span class="esp" style="font-family:'Instrument Sans',sans-serif;font-weight:700;color:#fff">Instrument Sans</span> <span class="lbl">— display</span></div>
+        <div><span class="esp" style="font-family:'IBM Plex Sans',sans-serif;font-size:15px;color:#fff">IBM Plex Sans</span> <span class="lbl">— body / mono en cifras</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OPCION C ============ -->
+  <div class="opcion opt-c">
+    <div class="device">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><div class="statusicons"><span class="sb-wifi"></span><span class="sb-batt"></span></div></div>
+        <div class="content">
+          <div class="greet">Hola, Carlos 👋</div>
+          <div class="name">Así va tu negocio</div>
+          <div class="submeta">3 personas te están esperando</div>
+
+          <div class="stat-strip">
+            <div class="stat"><div class="lbl">Cobrado</div><div class="val tabular">$1,245</div></div>
+            <div class="stat"><div class="lbl">Pendiente</div><div class="val tabular">$740</div></div>
+            <div class="stat"><div class="lbl">Atrasado</div><div class="val warn tabular">$225</div></div>
+          </div>
+
+          <div class="section-title">Tus clientes</div>
+
+          <div class="contacto">
+            <div class="ring rojo"><div class="av">CN</div></div>
+            <div class="cmid"><div class="cli">Clínica Nova</div><div class="nota">Página Web Profesional</div></div>
+            <div class="cside"><div class="monto tabular">$225</div><div class="dias">1 día atraso</div></div>
+          </div>
+          <div class="contacto">
+            <div class="ring amb"><div class="av">RV</div></div>
+            <div class="cmid"><div class="cli">Restaurante Verde</div><div class="nota">Landing Page</div></div>
+            <div class="cside"><div class="monto tabular">$450</div><div class="dias">vence hoy</div></div>
+          </div>
+          <div class="contacto">
+            <div class="ring verde"><div class="av">ML</div></div>
+            <div class="cmid"><div class="cli">María López</div><div class="nota">Automatización</div></div>
+            <div class="cside"><div class="monto tabular">$600</div><div class="dias ok">al día</div></div>
+          </div>
+
+          <div class="fab"><svg class="icon" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M12 5v14M5 12h14"/></svg></div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>Inicio</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clientes</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/></svg>Cobros</div>
+          <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stats</div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="device">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><div class="statusicons"><span class="sb-wifi"></span><span class="sb-batt"></span></div></div>
+        <div class="content landing">
+          <div class="lhero">
+            <span class="kicker">Hecho para freelancers LATAM</span>
+            <h2>Cobra lo que te deben. <em>Controla</em> lo que ganas.</h2>
+            <p>CobroFlow te muestra quién te debe, cuánto y desde cuándo — como si conocieras a cada cliente de memoria.</p>
+            <button class="btn">Empieza gratis</button>
+            <div class="mock">
+              <div class="contacto" style="border:none;padding:0;">
+                <div class="ring verde" style="width:38px;height:38px"><div class="av" style="font-size:12px">CN</div></div>
+                <div class="cmid"><div class="cli" style="font-size:12.5px">Clínica Nova</div><div class="nota" style="font-size:10.5px">pagó $225 hoy</div></div>
+                <div class="check-custom"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="ficha">
+      <span class="badge">Opción C</span>
+      <h3>Radar cercano</h3>
+      <p>Fusión Bonsai + tono terroso/salvia: cálido, orgánico y centrado en PERSONAS, no en números — cada cliente es un contacto con un anillo de estado, como una libreta de relaciones, no una tabla de cuentas.</p>
+      <div class="hipotesis">✅ Convierte mejor con perfiles creativos (diseñadores, coaches, consultores) para quienes "cobrar" se siente incómodo — la app se apoya en la relación humana, no en la presión del dinero.</div>
+      <div class="paleta">
+        <div class="sw" style="background:#F7F2E7"></div><div class="sw" style="background:#3D6B4F"></div><div class="sw" style="background:#BD5B33"></div><div class="sw" style="background:#2B2416"></div>
+      </div>
+      <div class="tipos">
+        <div><span class="esp" style="font-family:'Onest',sans-serif;font-weight:700">Onest</span> <span class="lbl">— display</span></div>
+        <div><span class="esp" style="font-family:'Familjen Grotesk',sans-serif;font-size:15px">Familjen Grotesk</span> <span class="lbl">— body</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

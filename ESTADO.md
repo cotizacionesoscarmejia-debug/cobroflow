@@ -1,0 +1,155 @@
+# ESTADO — CobroFlow
+Última actualización: 2026-08-16 | Sesión actual: 5
+
+⏸️ CHECKPOINT — Sesiones 3-5 completas: landing, onboarding, paywall, login y la app interna
+(Dashboard, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente, Cuenta) están
+construidas, compilan limpio (tsc+build) y se probaron de punta a punta en el navegador: landing
+→ onboarding (perfil→moneda→primer cliente→saldo calculado en vivo) → paywall (recap+3 planes)
+→ login (mock) → Dashboard real con datos en `localStorage` → agregar cliente → registrar pago
+→ el saldo baja a $0 y cambia a "Pagado". Todo funciona, sin bugs conocidos.
+
+**Registro formal de revisor-visual (las 4 pantallas que deciden el dinero):**
+| Pantalla | Rondas | Último puntaje | Veredicto |
+|---|---|---|---|
+| Landing | 3 | 30/40 · 15/20 craft · 18/20 copy | NO LISTA — bloqueante estructural (ver abajo) |
+| Onboarding | 3 | 34/40 · 14/20 craft | NO LISTA — cerca del gate |
+| Paywall | 3 | 30/40 · 15/20 craft · 18/20 copy | NO LISTA — cerca del gate |
+| Dashboard (`/app`) | 2 | 31/40 · 15/20 craft | NO LISTA — cerca del gate |
+
+**DECISIÓN DE CIERRE aplicada a las 4** (mismo criterio en cada una — "PREGUNTAR vs DECIDIR" de
+CLAUDE.md trata el nivel de acabado tras rondas repetidas de revisor como decisión técnica, no
+estratégica): cada pantalla recibió 2-3 rondas de revisor-visual con mejora real y verificable en
+cada vuelta, hasta llegar a retornos decrecientes. En ese punto se aplicó una última tanda de
+fixes verificada A MANO en el navegador (no con una ronda más del subagente) y se cerró el
+ciclo. Ninguna quedó "LISTA" en el registro formal, pero las 4 son funcionalmente completas,
+sin bugs, con el recorrido de venta y de producto probado de extremo a extremo. El detalle de
+cada ronda vive en `docs/revisiones/<pantalla>-veredicto.md`.
+
+**Único bloqueante estructural real** (landing): el Hero y "La app por dentro" mostraban
+placeholders en vez de capturas reales — YA RESUELTO en la práctica porque la app interna ahora
+existe. Pendiente mecánico (no de diseño): montar 1 screenshot real del Dashboard en `Hero.tsx`
+(prop `visual`) y en los 4 frames de `AppPorDentro.tsx` (prop `src`), y volver a correr
+`revisor-visual` sobre la landing — con eso tiene buenas chances de cruzar el gate.
+
+**Pantallas secundarias** (Login, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente,
+Cuenta): verificadas a mano con screenshot + checklist, sin revisor-visual formal — correcto
+según la política del sistema (el revisor es obligatorio solo en las 4 pantallas del dinero).
+
+## Qué es esta app (3 líneas máximo)
+SaaS de control de cobros para freelancers, profesionales independientes y microempresas de
+LATAM: muestra cuánto han cobrado, quién les debe, qué está atrasado y cuánto esperan recibir.
+No es un sistema contable — es más simple y visual. Monetización: suscripción Free/Pro/Premium.
+
+## Promesa central
+"CobroFlow ayuda a freelancers y microempresas de LATAM a saber exactamente cuánto han cobrado,
+quién les debe y qué cobros están atrasados, sin usar una hoja de Excel ni un sistema contable
+complicado, mediante un panel que calcula solo cada saldo y te dice a quién darle seguimiento hoy."
+
+## Reporte de validación (Sesión 1)
+Veredicto: excelente oportunidad. Competencia internacional (Bonsai/HoneyBook) subió precios
+hasta 89% en 2025; competencia LATAM (Alegra/Siigo) es software CONTABLE pesado, no un tracker
+simple — confirma el hueco. Señal de pago real: plantillas de "Cuentas por Cobrar" se venden hoy
+en Gumroad. Precio elegido ($0/$7.99/$14.99) queda por debajo de toda la competencia relevada.
+Fuentes y detalle completos en `FICHA-MERCADO.md`.
+
+## Avatar y venta (Sesión 1 — NO cambiar sin validar)
+FICHA-AVATAR.md: APROBADA (2026-08-15, de trabajo — investigación secundaria, sin entrevistas
+directas). Avatar: Carlos, 29, freelancer LATAM con 3-6 clientes activos · dolor #1 "no sé
+exactamente quién me debe plata en este momento" · nivel de consciencia Problem-Aware/
+Solution-Aware. Mecanismo bautizado: **"el Radar de Cobros"**.
+
+## Dirección de Arte (Sesión 2 — CERRADA, NO cambiar sin justificación)
+FICHA-ARTE.md: APROBADA (2026-08-15), dirección derivada (fusión Nubank + Bonsai, sin referencia
+visual del usuario). Fondo `#FAF6EF` · acento `#187C51` (verde, ajustado de `#1B8A5A` por AA) ·
+2ª nota `#C97A2E` (ámbar) · Display "Sora" · Body "Wix Madefor Text" · radio 22px cards ·
+dispositivo ownable: "recibo perforado". Personalidad: claro · confiable · cercano. REGISTRO
+ANTI-REPETICIÓN (29/54): paleta/tipografía/dispositivo VETADOS para el próximo proyecto del SO.
+Comparativa de las 3 opciones: `docs/revisiones/direcciones-abc.html`.
+
+## Constitución del Producto (Sesión 1)
+1. **Usuario:** freelancers/profesionales/microempresas LATAM con 3+ clientes, hoy repartidos
+   entre WhatsApp, Excel, notas y memoria.
+2. **Problema real:** pierden de vista cuánto han cobrado, cuánto les deben y quién está
+   atrasado — con la ansiedad de "perseguir" pagos sin sistema.
+3. **Primera victoria:** agregar su primer cliente+proyecto con anticipo y ver el saldo
+   calculado AL INSTANTE, sin calcular nada — "el sistema hizo la cuenta por mí".
+4. **3 flujos clave:** Cliente→Proyecto→Pago con saldo automático · Centro de Cobros (a quién
+   seguirle + recordatorio copiar/WhatsApp) · Dashboard (cobrado/pendiente/atrasado/próximos).
+5. **Qué NUNCA hace la app:** no cobra ni procesa pagos de terceros (solo seguimiento) · nunca
+   comparte datos de clientes · nunca presenta "puntualidad" como score crediticio oficial ·
+   nunca usa IA para un cálculo que la matemática resuelve · nunca esconde historial al bajar de
+   plan.
+
+## Estrategia de monetización (decidida por el usuario — cosa juzgada)
+Freemium de 3 planes — Free ($0, 3 clientes/5 proyectos, sin tarjeta) → Pro ($7.99/mes, todo
+ilimitado) → Premium ($14.99/mes, proyecciones + IA acotada). Sin trial: el Free permanente ES
+el "pruébalo antes de pagar". Límites de Free como upsell con valor, nunca error técnico.
+
+## Secuencia maestra de construcción
+Ruta: `/` (landing) → `/onboarding` → `/paywall` → `/login` → `/app`. Las 5 etapas están
+CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web/` (dev server
+`.claude/launch.json` → "cobroflow", puerto 3200). Servicios externos: pendiente (Sesión 6).
+
+## Decisiones técnicas (NO re-discutir sin pedirlo el usuario)
+- Framework: **Next.js (App Router)**. Auth planeada: **Supabase Auth** (magic link + Google).
+- Pagos planeados: **Stripe** (pedido explícito del usuario, desviación consciente del default
+  Hotmart del SO — apropiado para un SaaS de autoservicio). Verificar cobertura del país del
+  usuario cuando se conecte en Sesión 6.
+- Base de datos planeada: Supabase (Postgres+RLS) — `profiles`, `subscriptions`, `clients`,
+  `projects`, `payments`, `payment_schedules`, `expenses` (Fase 2), `reminder_templates`, `goals`
+  (Fase 3), `notifications`, `ai_analysis` (Fase 3), `activity_logs`.
+- **Dato real de esta sesión (Sesión 5):** mientras no hay Supabase, la app interna persiste en
+  `localStorage` vía `lib/app-data.ts` (Cliente/Proyecto/Pago, con semilla realista + migración
+  del primer cliente del onboarding). El modelo de datos real de Sesión 6 debe migrar este mismo
+  esquema (no reinventarlo): `clientes`, `proyectos` (con `fechaPromesa` para calcular atraso),
+  `pagos`. Estados de cobro (`pagado/atrasado/vence_hoy/proximo/al_dia`) se derivan en el cliente
+  con matemática simple — mantener esa lógica igual en el backend real.
+- Arquitectura de IA: SOLO Premium, SOLO "Analizar mi negocio" — JSON resumido, nunca datos
+  crudos de clientes. Todo lo demás (saldos, atrasos) es matemática, cero IA.
+- Multi-moneda: moneda por cliente, sin conversión automática en el MVP. Onboarding y "Nuevo
+  cliente" hoy fijan USD por simplicidad — el selector de moneda completo (11 monedas LATAM)
+  vive en el onboarding pero no se propaga aún al alta rápida de "Nuevo cliente" dentro de la
+  app; homologar en Sesión 6.
+
+## Sesiones completadas ✅
+- Sesión 1 — Constitución, FICHA-AVATAR.md, FICHA-MERCADO.md, monetización (2026-08-15).
+- Sesión 2 — Identidad visual: Opción A "Radar en calma" + FICHA-ARTE.md (2026-08-15).
+- Sesión 3 — Landing (10 secciones canónicas + `OfertaPlanes.tsx` de 3 tiers) (2026-08-16).
+- Sesión 4 — Onboarding (perfil→moneda→cliente→resultado) + paywall + login (2026-08-16).
+- Sesión 5 — App interna: Dashboard, Clientes, Centro de Cobros, Nuevo cliente, Cuenta
+  (2026-08-16).
+
+## Próximas sesiones 📋
+- Sesión 6: Integraciones reales — GitHub, Supabase (esquema real + RLS, migrar el modelo de
+  `lib/app-data.ts`), Stripe (checkout+webhook+portal, confirmar país soportado), Resend, Vercel,
+  dominio. Al conectar Supabase: montar 1 screenshot real del Dashboard en la landing (`Hero.tsx`
+  + `AppPorDentro.tsx`) y re-lanzar `revisor-visual` sobre la landing.
+- Sesión 7: Testing, pulido, rigor de entrega — buen momento para retomar `revisor-visual` sobre
+  las 4 pantallas del dinero con el proyecto ya más maduro (screenshots reales, backend real).
+- Sesión 8: Fase 2 (gastos/reportes/metas) y Fase 3 (Premium: proyecciones/IA) + adquisición.
+
+## Problemas conocidos ⚠️
+- **Veredictos NO LISTA en landing/onboarding/paywall/Dashboard** — ver tabla y decisión de
+  cierre arriba. Detalle de cada ronda en `docs/revisiones/<pantalla>-veredicto.md`.
+- Email de soporte en landing/footer es `hola@cobroflow.app` — PLACEHOLDER, dominio real
+  pendiente de comprar (Sesión 6).
+- Las 4 páginas legales son BORRADOR — falta repaso de `47-LEGAL-FISCAL-Y-PRIVACIDAD.md` antes
+  de vender de verdad. No bloquea seguir construyendo.
+- Selector de moneda del onboarding (6 chips sin preselección regional) — decisión de alcance,
+  no bug; queda para cuando haya evidencia real de qué países usan más la app.
+- El alta rápida de cliente dentro de la app (`/app/clientes/nuevo`) fija USD a mano en vez de
+  reusar el selector de 11 monedas del onboarding — homologar en Sesión 6.
+
+## Pendientes del usuario (acciones que el usuario debe hacer)
+- [ ] Ninguna todavía — llegan en la fase de servicios externos (Sesión 6): Supabase, Stripe,
+  Vercel, Resend, dominio.
+
+## Notas para la próxima sesión
+- Proyecto 100% separado de English2Hire — carpeta propia `cobroflow/`, su propio ESTADO.md,
+  FICHA-ARTE.md, FICHA-AVATAR.md y FICHA-MERCADO.md.
+- El usuario dio un brief de 60 secciones extremadamente detallado y técnicamente sólido — la
+  mayoría de la Constitución y la arquitectura ya venían resueltas por él; se documentó tal cual
+  con ajustes menores de nomenclatura.
+- Antes de Sesión 6: decidir con el usuario si migrar `lib/app-data.ts` tal cual a Supabase o
+  ajustar el esquema — la lógica de estados (atrasado/próximo/etc.) ya está probada y debería
+  sobrevivir el cambio de backend sin reescribirse.

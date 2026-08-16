@@ -1,0 +1,10 @@
+# Next.js app (web/.gitignore ya cubre node_modules, .next, .env*, etc. — esto es
+# refuerzo a nivel raíz del repo)
+web/node_modules/
+web/.next/
+web/.env*
+web/.vercel
+
+# Sistema
+.DS_Store
+Thumbs.db
