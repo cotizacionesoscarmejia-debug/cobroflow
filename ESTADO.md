@@ -1,6 +1,81 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-16 | Sesión actual: 6
 
+⏸️ CHECKPOINT — Sesión 6: "no encuentro cómo iniciar sesión, siempre me manda a crear cuenta
+gratis" — RESUELTO. La landing ya tenía un enlace "Entrar" en la esquina superior derecha
+(`Hero.tsx`), pero (a) el texto "Entrar" no era lo bastante claro/visible y (b) esa misma
+pantalla `/login` decía SIEMPRE "Crea tu cuenta gratis" sin importar si la persona ya tenía
+cuenta — confuso, porque el login mágico usa la MISMA pantalla y el MISMO mecanismo para
+cuenta nueva y para entrar a una existente (no hay contraseña que distinga los dos casos).
+Arreglado sin agregar una ruta nueva: (1) el enlace del header ahora dice "Iniciar sesión"
+(antes "Entrar") — `app/page.tsx` pasa `loginLabel="Iniciar sesión"` al `Hero`. (2) `/login`
+ahora usa la señal que ya existía (`estado.primerCliente`, se llena solo si vienes del
+onboarding) para mostrar el texto correcto: si vienes de onboarding → "Crea tu cuenta gratis"
+(sin cambios); si entras directo (enlace del header, marcador, URL a mano) → "Inicia sesión en
+CobroFlow" + "Escribe tu correo... si no tienes cuenta todavía, la creamos al instante."
+Verificado en preview local (`/` y `/login` sin sesión, no requieren login para verse).
+
+⏸️ CHECKPOINT — Sesión 6: enlace mágico confirmado funcionando por el usuario. 3 pedidos del
+usuario resueltos:
+1. **Selector de moneda en "Nuevo cliente" (`/app/clientes/nuevo`)**: ya no fija `USD` a mano —
+   ahora usa el mismo `MONEDAS` del onboarding (7 monedas, incl. GTQ) con un `<select>` y el
+   label del precio total se actualiza dinámicamente. Cierra el pendiente que ya estaba anotado
+   más abajo en "Problemas conocidos" ("El alta rápida de cliente fija USD..."). `tsc` limpio.
+   Verificación visual pendiente: requiere sesión real (el agente no tiene acceso al correo del
+   usuario para loguearse en local), el usuario puede confirmarlo la próxima vez que agregue un
+   cliente.
+2. **⚠️ Cuenta `ogames2003@gmail.com` subida a Premium MANUALMENTE (no por Hotmart real)** — a
+   pedido explícito del usuario, para poder probar las funciones de Premium. Se hizo con SQL
+   directo replicando exactamente lo que hace `apply_hotmart_event` en una compra real:
+   `plan='premium'`, `status='active'`, `first_paid_at=now()`. **NO tiene `hotmart_subscriber_code`
+   real** (queda NULL) — si el usuario compra Premium de verdad después por Hotmart, el webhook
+   la va a actualizar igual (busca por email si no encuentra el subscriber_code). Antes de vender
+   de verdad, recordar que esta cuenta NO refleja un cobro real.
+3. **10 clientes ficticios de prueba** cargados en esa misma cuenta (nombre + apellido variados,
+   montos y monedas distintas — USD/GTQ/MXN/COP — y fechas repartidas para cubrir los 5 estados
+   de cobro: pagado, atrasado, vence_hoy, próximo, al_día). Son DATOS DE PRUEBA, no clientes
+   reales — bórralos antes de que el usuario empiece a usar la cuenta de verdad, o adviértele
+   que están ahí. Verificado con SQL: `plan=premium · status=active · 10 clientes · 10 proyectos
+   · 9 pagos` (un cliente, Daniela Alejandra Ríos, queda sin anticipo a propósito).
+
+⏸️ CHECKPOINT — Sesión 6: bug real de "el enlace ya no es válido" en `/confirmar`, RESUELTO.
+Causa raíz: las plantillas de correo "Magic link or OTP" y "Confirm sign up" (Authentication →
+Emails → Templates) usaban el enlace por defecto de Supabase `{{ .ConfirmationURL }}` — ese
+enlace verifica el token en el SERVIDOR de Supabase y luego redirige a `/confirmar`, pero sin
+pasarle el `token_hash` que la página espera leer de la URL. Como `/confirmar` está codeada para
+verificar el token ELLA MISMA en el cliente (`verifyOtp({token_hash, type:'email'})` — patrón
+elegido a propósito para blindarse contra los escáneres de seguridad de Gmail/Outlook que abren
+los enlaces de los correos automáticamente), al no encontrar `token_hash` en la URL mostraba "El
+enlace ya no es válido" al instante, sin llamar nunca a Supabase (confirmado cruzando los Auth
+Logs: cero intentos de verificación fallidos del lado del servidor — el error era 100% del lado
+del cliente). Esto se rompió porque al reconstruir el proyecto de Supabase (por la pérdida de
+acceso) las plantillas volvieron al texto por defecto; nunca se les aplicó de nuevo el patrón con
+`token_hash` que sí tenía el proyecto viejo. **Arreglado**: ambas plantillas ahora usan
+`{{ .SiteURL }}/confirmar?token_hash={{ .TokenHash }}&type=email&next=/app` en vez de
+`{{ .ConfirmationURL }}` — guardado y confirmado ("Successfully updated email template") en las
+dos. Vigencia del enlace verificada en 3600s (1 hora) — no era un problema de tiempo. Pendiente:
+que el usuario confirme con una prueba real que ya entra sin el error.
+
+⏸️ CHECKPOINT ANTERIOR — Sesión 6, tras la migración de Supabase: 2 ajustes en vivo.
+1. **Moneda GTQ agregada**: `lib/onboarding.ts` — `MONEDAS` ahora incluye `GTQ` (quetzal
+   guatemalteco), el usuario también vende en Guatemala. `tsc`/build limpios, verificado en
+   preview (onboarding → paso moneda). Commit hecho.
+2. **RESUELTO (causa raíz real, 2026-08-16) — "No pudimos enviar el enlace" en `/login`:** el
+   primer diagnóstico (límite de 2 correos/hora) era solo un síntoma. La causa real: en el
+   proyecto nuevo de Supabase (el reconstruido por la pérdida de acceso), **el SMTP personalizado
+   de Resend estaba DESACTIVADO** (Authentication → Emails → SMTP Settings mostraba el
+   formulario vacío/con placeholders, no los datos reales) — nunca quedó activo tras la
+   reconstrucción, aunque el usuario ya lo había configurado antes. Mientras está apagado,
+   Supabase usa su servicio de correo interno con un tope fijo de 2/hora que NO se puede subir
+   (por eso el ajuste del límite no se guardaba de verdad, aunque el panel lo mostraba). El
+   usuario reactivó el SMTP y volvió a cargar sus datos de Resend (Host `smtp.resend.com` ·
+   Puerto `465` · Usuario `resend` · remitente `soporte@cobroflow.app`; la contraseña/API key la
+   puso él mismo, nunca se maneja esa clave desde el agente). Verificado con
+   `fetch('/auth/v1/otp', ...)` a un correo real → `status: 200`. (Nota de diagnóstico: durante
+   las pruebas, enviar a un correo `@example.com` da 550 "Invalid to field" — Resend bloquea
+   ese dominio a propósito por ser de prueba/RFC-reservado; no es un bug, solo hay que probar
+   con un correo real.) El envío de enlaces mágicos funciona de nuevo de punta a punta.
+
 ✅ **PROYECTO DE SUPABASE MIGRADO Y VERIFICADO EN VIVO — el de abajo (`wbmicgcwiffneuqaujef`) YA
 NO ES el activo, es historial.** El usuario perdió el acceso a esa cuenta/organización de
 Supabase (login de GitHub→Google roto, sin contraseña de respaldo). Se creó un proyecto nuevo,
