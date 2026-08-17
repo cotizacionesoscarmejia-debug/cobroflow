@@ -53,9 +53,15 @@ function RestablecerForm() {
     const supabase = createClient();
     const { error: err } = await supabase.auth.updateUser({ password });
     if (err) {
-      setError('No pudimos guardar tu nueva contraseña. Intenta de nuevo.');
-      setEstado('formulario');
-      return;
+      // Supabase rechaza guardar la MISMA contraseña que ya tienes (protección
+      // normal, no un fallo real) — si pasa esto, tu contraseña ya es esta,
+      // así que se trata igual que un exito en vez de mostrar un error confuso.
+      const yaEsTuContrasena = err.message.toLowerCase().includes('different from the old password');
+      if (!yaEsTuContrasena) {
+        setError('No pudimos guardar tu nueva contraseña. Intenta de nuevo.');
+        setEstado('formulario');
+        return;
+      }
     }
     setEstado('listo');
     setTimeout(() => router.push('/app'), 1500);
