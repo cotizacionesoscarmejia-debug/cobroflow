@@ -3,23 +3,42 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, ChevronRight, Coins, Check } from 'lucide-react';
+import { LogOut, ChevronRight, Coins, Check, FileDown, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
-import { obtenerPerfilMoneda, obtenerPerfil, actualizarNombre, nombreParaMostrar, inicialesParaMostrar } from '@/lib/app-data';
+import {
+  obtenerPerfilMoneda,
+  obtenerPerfil,
+  actualizarNombre,
+  actualizarNegocio,
+  nombreParaMostrar,
+  inicialesParaMostrar,
+  obtenerDB,
+  obtenerTasas,
+} from '@/lib/app-data';
+import { generarReportePDF, type PeriodoReporte } from '@/lib/pdf-report';
 
 const NOMBRE_PLAN: Record<string, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' };
+const PERIODOS: { valor: PeriodoReporte; etiqueta: string }[] = [
+  { valor: 'mes', etiqueta: 'Este mes' },
+  { valor: 'trimestre', etiqueta: 'Últimos 3 meses' },
+  { valor: 'todo', etiqueta: 'Todo el historial' },
+];
 
 export default function CuentaPage() {
   const router = useRouter();
   const [userId, setUserId] = useState('');
   const [plan, setPlan] = useState<'free' | 'pro' | 'premium'>('free');
   const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
-  const [perfil, setPerfil] = useState({ email: '', nombre: '', apellido: '' });
+  const [perfil, setPerfil] = useState({ email: '', nombre: '', apellido: '', nombreNegocio: '' });
   const [nombreEditado, setNombreEditado] = useState('');
   const [apellidoEditado, setApellidoEditado] = useState('');
+  const [negocioEditado, setNegocioEditado] = useState('');
   const [guardandoNombre, setGuardandoNombre] = useState(false);
   const [nombreGuardado, setNombreGuardado] = useState(false);
+  const [periodoReporte, setPeriodoReporte] = useState<PeriodoReporte>('todo');
+  const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [errorPDF, setErrorPDF] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -35,6 +54,7 @@ export default function CuentaPage() {
       setPerfil(perfilUsuario);
       setNombreEditado(perfilUsuario.nombre);
       setApellidoEditado(perfilUsuario.apellido);
+      setNegocioEditado(perfilUsuario.nombreNegocio);
     });
   }, [router]);
 
@@ -48,8 +68,16 @@ export default function CuentaPage() {
     if (!nombreEditado.trim() || !apellidoEditado.trim()) return;
     setGuardandoNombre(true);
     try {
-      await actualizarNombre(nombreEditado.trim(), apellidoEditado.trim());
-      setPerfil((p) => ({ ...p, nombre: nombreEditado.trim(), apellido: apellidoEditado.trim() }));
+      await Promise.all([
+        actualizarNombre(nombreEditado.trim(), apellidoEditado.trim()),
+        actualizarNegocio(negocioEditado.trim()),
+      ]);
+      setPerfil((p) => ({
+        ...p,
+        nombre: nombreEditado.trim(),
+        apellido: apellidoEditado.trim(),
+        nombreNegocio: negocioEditado.trim(),
+      }));
       setNombreGuardado(true);
       setTimeout(() => setNombreGuardado(false), 2000);
     } finally {
@@ -57,11 +85,26 @@ export default function CuentaPage() {
     }
   }
 
+  async function descargarReporte() {
+    setGenerandoPDF(true);
+    setErrorPDF(null);
+    try {
+      const [db, tasas] = await Promise.all([obtenerDB(), obtenerTasas()]);
+      generarReportePDF({ db, perfil, monedaPrincipal, tasas, periodo: periodoReporte });
+    } catch {
+      setErrorPDF('No pudimos generar el reporte. Intenta de nuevo.');
+    } finally {
+      setGenerandoPDF(false);
+    }
+  }
+
   const iniciales = inicialesParaMostrar(perfil);
   const nombreCompleto = nombreParaMostrar(perfil);
   const tieneNombre = Boolean(perfil.nombre && perfil.apellido);
   const cambioSinGuardar =
-    nombreEditado.trim() !== perfil.nombre.trim() || apellidoEditado.trim() !== perfil.apellido.trim();
+    nombreEditado.trim() !== perfil.nombre.trim() ||
+    apellidoEditado.trim() !== perfil.apellido.trim() ||
+    negocioEditado.trim() !== perfil.nombreNegocio.trim();
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10">
@@ -109,6 +152,16 @@ export default function CuentaPage() {
             />
           </label>
         </div>
+        <label className="mt-3 flex flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-[var(--text-secondary)]">Nombre de tu negocio (opcional)</span>
+          <input
+            type="text"
+            value={negocioEditado}
+            onChange={(e) => setNegocioEditado(e.target.value)}
+            placeholder="Ej. Estudio Nova"
+            className="h-11 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--bg)] px-3 text-[14px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+          />
+        </label>
         <label className="mt-3 flex flex-col gap-1.5">
           <span className="text-[12px] font-medium text-[var(--text-secondary)]">Correo electrónico</span>
           <p className="h-11 flex items-center rounded-[var(--radius-button)] bg-[var(--surface-2)] px-3 text-[14px] text-[var(--text-tertiary)]">
@@ -162,6 +215,62 @@ export default function CuentaPage() {
               Pasar a Premium — $14.99/mes
             </a>
           </div>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-[var(--chip-bg)]"
+          >
+            <FileDown size={18} color="var(--accent)" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-[var(--text-primary)]">Reporte financiero en PDF</p>
+            <p className="truncate text-[12px] text-[var(--text-secondary)]">
+              {plan === 'premium' ? 'Con tus datos reales, listo para descargar' : 'Función de Premium'}
+            </p>
+          </div>
+        </div>
+
+        {plan === 'premium' ? (
+          <>
+            <div className="mt-4 flex gap-2">
+              {PERIODOS.map((p) => (
+                <button
+                  key={p.valor}
+                  type="button"
+                  onClick={() => setPeriodoReporte(p.valor)}
+                  className={`flex h-9 flex-1 items-center justify-center rounded-[var(--radius-button)] px-2 text-[12px] font-medium transition-colors duration-150 ${
+                    periodoReporte === p.valor
+                      ? 'bg-[var(--accent)] text-[var(--bg)]'
+                      : 'bg-[var(--surface-2)] text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {p.etiqueta}
+                </button>
+              ))}
+            </div>
+            {errorPDF && <p className="mt-3 text-[12px] font-medium text-[var(--status-error)]">{errorPDF}</p>}
+            <button
+              type="button"
+              onClick={descargarReporte}
+              disabled={generandoPDF}
+              className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--accent)] text-[13px] font-semibold text-[var(--bg)] disabled:opacity-40"
+            >
+              <FileDown size={15} aria-hidden="true" />
+              {generandoPDF ? 'Generando…' : 'Descargar reporte PDF'}
+            </button>
+          </>
+        ) : (
+          <a
+            href={hotmartCheckoutUrl('premium', { email: perfil.email, userId })}
+            className="mt-4 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] text-[13px] font-semibold text-[var(--accent)]"
+          >
+            <Lock size={14} aria-hidden="true" />
+            Desbloquear con Premium
+          </a>
         )}
       </div>
 

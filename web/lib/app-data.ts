@@ -211,6 +211,7 @@ export interface Perfil {
   email: string;
   nombre: string;
   apellido: string;
+  nombreNegocio: string;
 }
 
 export async function obtenerPerfil(): Promise<Perfil> {
@@ -218,12 +219,13 @@ export async function obtenerPerfil(): Promise<Perfil> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { email: '', nombre: '', apellido: '' };
-  const { data } = await supabase.from('profiles').select('nombre, apellido').eq('id', user.id).single();
+  if (!user) return { email: '', nombre: '', apellido: '', nombreNegocio: '' };
+  const { data } = await supabase.from('profiles').select('nombre, apellido, nombre_negocio').eq('id', user.id).single();
   return {
     email: user.email ?? '',
     nombre: data?.nombre ?? '',
     apellido: data?.apellido ?? '',
+    nombreNegocio: data?.nombre_negocio ?? '',
   };
 }
 
@@ -234,6 +236,16 @@ export async function actualizarNombre(nombre: string, apellido: string): Promis
   } = await supabase.auth.getUser();
   if (!user) throw new Error('sin_sesion');
   const { error } = await supabase.from('profiles').update({ nombre, apellido }).eq('id', user.id);
+  if (error) throw error;
+}
+
+export async function actualizarNegocio(nombreNegocio: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('profiles').update({ nombre_negocio: nombreNegocio }).eq('id', user.id);
   if (error) throw error;
 }
 
