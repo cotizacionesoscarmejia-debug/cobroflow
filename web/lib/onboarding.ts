@@ -14,6 +14,8 @@ export interface EstadoOnboarding {
   moneda?: string;
   primerCliente?: PrimerCliente;
   planElegido?: 'free' | 'pro' | 'premium';
+  nombre?: string;
+  apellido?: string;
 }
 
 const KEY = 'cobroflow_onboarding';

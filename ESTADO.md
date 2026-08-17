@@ -1,6 +1,66 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-16 | Sesión actual: 6
 
+⏸️ CHECKPOINT — Sesión 6: proyecto de mejoras finales (20 puntos pedidos por el usuario: PDF
+Premium, IA Premium, nombre en vez de correo, login con contraseña, onboarding guiado,
+multimoneda completa). Ninguna de las 7 funciones existía antes de esta ronda — confirmado con
+exploración completa del código antes de tocar nada. Decisiones ya acordadas con el usuario:
+(1) el login reemplaza el enlace mágico por completo (cuentas existentes usan "olvidé mi
+contraseña" una vez para crear la suya); (2) el análisis IA usa Claude (Anthropic), clave la
+pone el usuario en Vercel; (3) se avanza FASE POR FASE con su visto bueno antes de seguir a la
+siguiente. Se dividió en 6 fases (tareas #6-#11 del task tracker).
+
+**FASE 1 — Multimoneda correcta: ✅ HECHA, DESPLEGADA, pendiente de que el usuario la pruebe.**
+- Migración aplicada: `profiles.moneda_principal` (default USD) + tabla `exchange_rates`
+  (user_id, moneda_origen, moneda_destino, tasa, actualizado_en, RLS igual que `clients`) +
+  trigger `valida_limite_free` extendido: plan Free ya no puede crear un cliente con una moneda
+  distinta a la que ya usa (lanza `limite_free_moneda`).
+- `lib/app-data.ts`: `totalesPorMoneda`, `totalConsolidado` (nunca inventa conversión — si falta
+  la tasa, devuelve qué moneda falta), `obtenerPerfilMoneda`/`actualizarMonedaPrincipal`,
+  `obtenerTasas`/`guardarTasa`, `cobradoEsteMesPorMoneda`.
+  ⚠️ El bug real que reportó el usuario ("GTQ $700") ya estaba resuelto en la sesión anterior;
+  este cambio corrige uno más profundo: el Dashboard SUMABA saldos de monedas distintas como si
+  fueran una sola cifra — ya no.
+- Dashboard (`app/app/page.tsx`): "Cobrado este mes"/"Por cobrar"/"Atrasado"/"Próximos 30 días"
+  ahora se agrupan por moneda (una línea por moneda si hay más de una) + bloque "Valor
+  consolidado" que solo aparece si hay 2+ monedas, y solo calcula si existen todas las tasas
+  necesarias (si falta alguna, dice cuál falta y linkea a Cuenta → Monedas).
+- Nueva pantalla `/app/cuenta/monedas`: moneda principal (select) + lista de tasas + formulario
+  para agregar/actualizar una tasa manual (1 origen = X principal, con fecha).
+- `Nuevo cliente`: si el plan es Free e intenta una 2ª moneda, muestra "Trabaja con clientes
+  internacionales con CobroFlow Pro" + botón "Actualizar a Pro" (a /app/cuenta).
+- `tsc`/`build` limpios. Verificado en producción: la ruta `/app/cuenta/monedas` existe y exige
+  sesión (protegida por `proxy.ts`, el middleware ya existente). **Falta verificación visual
+  real** (el agente no tiene cómo loguearse) — la cuenta `ogames2003@gmail.com` ya tiene 10
+  clientes de prueba en 4 monedas (USD/GTQ/MXN/COP), es el escenario perfecto para probarlo.
+- Commit: `752da2a`.
+
+**FASE 2 — Nombre y apellido en vez de correo: ✅ HECHA, DESPLEGADA, pendiente de que el usuario
+la pruebe.**
+- Migración: `profiles.nombre` + `profiles.apellido` (nullable — cuentas viejas no se rompen).
+- `lib/app-data.ts`: `obtenerPerfil`/`actualizarNombre`/`nombreParaMostrar`/`inicialesParaMostrar`
+  (si no hay nombre, cae de vuelta al criterio anterior derivado del correo — nunca deja el
+  saludo o las iniciales vacíos).
+- `/login`: cuando es cuenta NUEVA (viene del onboarding, `estado.primerCliente` existe) pide
+  Nombre y Apellido antes del correo; se guardan en sessionStorage (mismo patrón que
+  `primerCliente`) y `/confirmar` los aplica al perfil real justo después de `verifyOtp` (junto
+  a `migrarClienteDeOnboarding`). Cuando es login normal ("Inicia sesión en CobroFlow") no pide
+  nada nuevo.
+- Dashboard: el saludo ("Buenos días, ...") y las iniciales del avatar ya usan nombre/apellido.
+- Cuenta: la tarjeta de arriba muestra "Nombre Apellido" (o "Completa tu nombre abajo" si falta)
+  en vez del correo; nueva sección "Información personal" con Nombre/Apellido editables +
+  correo de solo lectura — ahí es donde una cuenta vieja sin nombre lo completa sin romper nada.
+- `tsc`/`build` limpios. Verificado en preview local (formulario de "Crear cuenta" con
+  Nombre/Apellido se ve bien). Verificación en producción con sesión real: pendiente del usuario
+  — su cuenta de prueba (`ogames2003@gmail.com`) no tiene nombre guardado todavía (se creó antes
+  de esta fase), es el caso ideal para probar "Completa tu nombre" en Cuenta.
+- Commit pendiente de push en este mismo turno.
+
+**Próximas fases (NO empezar sin que el usuario confirme la Fase 2):**
+Fase 3 login con contraseña → Fase 4 PDF Premium → Fase 5 IA Premium (Claude/Anthropic, el
+usuario debe crear cuenta en console.anthropic.com y poner `ANTHROPIC_API_KEY` en Vercel cuando
+llegue esa fase) → Fase 6 onboarding guiado.
+
 ⏸️ CHECKPOINT — Sesión 6: "no encuentro cómo iniciar sesión, siempre me manda a crear cuenta
 gratis" — RESUELTO. La landing ya tenía un enlace "Entrar" en la esquina superior derecha
 (`Hero.tsx`), pero (a) el texto "Entrar" no era lo bastante claro/visible y (b) esa misma

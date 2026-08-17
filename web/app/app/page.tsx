@@ -7,7 +7,6 @@ import { Plus, TrendingUp, ChevronRight, Check, ArrowRightLeft } from 'lucide-re
 import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
-import { createClient } from '@/lib/supabase/client';
 import {
   obtenerDB,
   proyectosConDatos,
@@ -17,6 +16,9 @@ import {
   totalConsolidado,
   obtenerPerfilMoneda,
   obtenerTasas,
+  obtenerPerfil,
+  nombreParaMostrar,
+  inicialesParaMostrar,
   type ProyectoConDatos,
   type TasaCambio,
 } from '@/lib/app-data';
@@ -152,24 +154,24 @@ export default function DashboardPage() {
   const [cobradoPorMoneda, setCobradoPorMoneda] = useState<Record<string, number>>({});
   const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
   const [tasas, setTasas] = useState<TasaCambio[]>([]);
-  const [email, setEmail] = useState('');
+  const [perfil, setPerfil] = useState({ email: '', nombre: '', apellido: '' });
 
   useEffect(() => {
-    Promise.all([obtenerDB(), obtenerPerfilMoneda(), obtenerTasas()]).then(([db, perfil, tasasData]) => {
-      setProyectos(proyectosConDatos(db));
-      setCobradoPorMoneda(cobradoEsteMesPorMoneda(db));
-      setMonedaPrincipal(perfil.monedaPrincipal);
-      setTasas(tasasData);
-    });
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => setEmail(data.user?.email ?? ''));
+    Promise.all([obtenerDB(), obtenerPerfilMoneda(), obtenerTasas(), obtenerPerfil()]).then(
+      ([db, perfilMoneda, tasasData, perfilUsuario]) => {
+        setProyectos(proyectosConDatos(db));
+        setCobradoPorMoneda(cobradoEsteMesPorMoneda(db));
+        setMonedaPrincipal(perfilMoneda.monedaPrincipal);
+        setTasas(tasasData);
+        setPerfil(perfilUsuario);
+      }
+    );
   }, []);
 
   if (!proyectos) return <SkeletonDashboard />;
 
-  const nombreUsuario = email ? email.split('@')[0].replace(/[._]/g, ' ') : '';
-  const iniciales = email ? email.slice(0, 2).toUpperCase() : '··';
+  const nombreUsuario = nombreParaMostrar(perfil);
+  const iniciales = inicialesParaMostrar(perfil);
 
   const pendientes = proyectos.filter((p) => p.saldo > 0);
   const pendientePorMoneda = totalesPorMoneda(pendientes.map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo })));

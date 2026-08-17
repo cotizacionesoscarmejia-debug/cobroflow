@@ -20,12 +20,15 @@ export default function LoginPage() {
 function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const plan = searchParams.get('plan');
   const nombrePlan = plan ? NOMBRE_PLAN[plan] : undefined;
   const [estado, setEstado] = useState<EstadoOnboarding>({});
+  const esCuentaNueva = Boolean(estado.primerCliente);
 
   useEffect(() => {
     if (plan === 'free' || plan === 'pro' || plan === 'premium') {
@@ -37,8 +40,12 @@ function LoginForm() {
 
   async function continuar() {
     if (!email.includes('@')) return;
+    if (esCuentaNueva && (!nombre.trim() || !apellido.trim())) return;
     setEnviando(true);
     setError(null);
+    if (esCuentaNueva) {
+      guardarEstado({ nombre: nombre.trim(), apellido: apellido.trim() });
+    }
     const supabase = createClient();
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
@@ -91,6 +98,31 @@ function LoginForm() {
         </p>
 
         <div className="mt-8 flex flex-col gap-3">
+          {esCuentaNueva && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">Nombre</span>
+                <input
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Ana"
+                  autoFocus
+                  className="h-14 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 text-[16px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">Apellido</span>
+                <input
+                  type="text"
+                  value={apellido}
+                  onChange={(e) => setApellido(e.target.value)}
+                  placeholder="López"
+                  className="h-14 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 text-[16px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+                />
+              </label>
+            </div>
+          )}
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-[var(--text-secondary)]">Correo electrónico</span>
             <div className="relative">
@@ -111,7 +143,10 @@ function LoginForm() {
             </p>
           )}
 
-          <CtaFunnel onClick={continuar} disabled={!email.includes('@') || enviando}>
+          <CtaFunnel
+            onClick={continuar}
+            disabled={!email.includes('@') || enviando || (esCuentaNueva && (!nombre.trim() || !apellido.trim()))}
+          >
             {enviando ? 'Enviando…' : 'Enviarme el enlace'}
           </CtaFunnel>
         </div>

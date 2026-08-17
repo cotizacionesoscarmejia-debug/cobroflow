@@ -205,6 +205,55 @@ export interface PerfilMoneda {
   monedaPrincipal: string;
 }
 
+// ── Identidad: nombre y apellido en vez del correo como identificador visual. ──
+
+export interface Perfil {
+  email: string;
+  nombre: string;
+  apellido: string;
+}
+
+export async function obtenerPerfil(): Promise<Perfil> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { email: '', nombre: '', apellido: '' };
+  const { data } = await supabase.from('profiles').select('nombre, apellido').eq('id', user.id).single();
+  return {
+    email: user.email ?? '',
+    nombre: data?.nombre ?? '',
+    apellido: data?.apellido ?? '',
+  };
+}
+
+export async function actualizarNombre(nombre: string, apellido: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('profiles').update({ nombre, apellido }).eq('id', user.id);
+  if (error) throw error;
+}
+
+/** "Nombre Apellido" si ya se cargó; si no, un nombre derivado del correo (mismo criterio que antes). */
+export function nombreParaMostrar(perfil: { nombre: string; apellido: string; email: string }): string {
+  const completo = `${perfil.nombre} ${perfil.apellido}`.trim();
+  if (completo) return completo;
+  return perfil.email ? perfil.email.split('@')[0].replace(/[._]/g, ' ') : '';
+}
+
+export function inicialesParaMostrar(perfil: { nombre: string; apellido: string; email: string }): string {
+  if (perfil.nombre || perfil.apellido) {
+    const i1 = perfil.nombre.trim().charAt(0);
+    const i2 = perfil.apellido.trim().charAt(0);
+    const iniciales = `${i1}${i2}`.toUpperCase();
+    if (iniciales) return iniciales;
+  }
+  return perfil.email ? perfil.email.slice(0, 2).toUpperCase() : '··';
+}
+
 export async function obtenerPerfilMoneda(): Promise<PerfilMoneda> {
   const supabase = createClient();
   const {

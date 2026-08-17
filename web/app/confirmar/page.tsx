@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Marca, CtaFunnel } from '@/components/onboarding/ui';
 import { createClient } from '@/lib/supabase/client';
 import { guardarEstado, leerEstado } from '@/lib/onboarding';
-import { migrarClienteDeOnboarding } from '@/lib/app-data';
+import { migrarClienteDeOnboarding, actualizarNombre } from '@/lib/app-data';
 import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
 
 // No se verifica el token automáticamente al cargar: Gmail/Outlook a veces
@@ -44,13 +44,16 @@ function ConfirmarForm() {
     }
 
     // Migra el primer cliente del onboarding (si existe) a la cuenta real recién creada.
-    const { planElegido } = leerEstado();
+    const { planElegido, nombre, apellido } = leerEstado();
     try {
       await migrarClienteDeOnboarding();
-      guardarEstado({ primerCliente: undefined, planElegido: undefined });
+      if (nombre && apellido) {
+        await actualizarNombre(nombre, apellido);
+      }
+      guardarEstado({ primerCliente: undefined, planElegido: undefined, nombre: undefined, apellido: undefined });
     } catch {
       // La cuenta ya quedó creada — si esto falla, el usuario solo pierde el
-      // traspaso del cliente de prueba, no el acceso. No bloquea el login.
+      // traspaso del cliente de prueba o su nombre, no el acceso. No bloquea el login.
     }
 
     // Si eligió un plan pago en el paywall, lo mandamos directo al pago real de

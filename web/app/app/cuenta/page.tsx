@@ -3,19 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, ChevronRight, Coins } from 'lucide-react';
+import { LogOut, ChevronRight, Coins, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
-import { obtenerPerfilMoneda } from '@/lib/app-data';
+import { obtenerPerfilMoneda, obtenerPerfil, actualizarNombre, nombreParaMostrar, inicialesParaMostrar } from '@/lib/app-data';
 
 const NOMBRE_PLAN: Record<string, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' };
 
 export default function CuentaPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
   const [userId, setUserId] = useState('');
   const [plan, setPlan] = useState<'free' | 'pro' | 'premium'>('free');
   const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
+  const [perfil, setPerfil] = useState({ email: '', nombre: '', apellido: '' });
+  const [nombreEditado, setNombreEditado] = useState('');
+  const [apellidoEditado, setApellidoEditado] = useState('');
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
+  const [nombreGuardado, setNombreGuardado] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -24,11 +28,13 @@ export default function CuentaPage() {
         router.replace('/login');
         return;
       }
-      setEmail(user.email ?? '');
       setUserId(user.id);
-      const perfil = await obtenerPerfilMoneda();
-      setPlan(perfil.plan);
-      setMonedaPrincipal(perfil.monedaPrincipal);
+      const [perfilMoneda, perfilUsuario] = await Promise.all([obtenerPerfilMoneda(), obtenerPerfil()]);
+      setPlan(perfilMoneda.plan);
+      setMonedaPrincipal(perfilMoneda.monedaPrincipal);
+      setPerfil(perfilUsuario);
+      setNombreEditado(perfilUsuario.nombre);
+      setApellidoEditado(perfilUsuario.apellido);
     });
   }, [router]);
 
@@ -38,7 +44,24 @@ export default function CuentaPage() {
     router.push('/');
   }
 
-  const iniciales = email ? email.slice(0, 2).toUpperCase() : '··';
+  async function guardarNombre() {
+    if (!nombreEditado.trim() || !apellidoEditado.trim()) return;
+    setGuardandoNombre(true);
+    try {
+      await actualizarNombre(nombreEditado.trim(), apellidoEditado.trim());
+      setPerfil((p) => ({ ...p, nombre: nombreEditado.trim(), apellido: apellidoEditado.trim() }));
+      setNombreGuardado(true);
+      setTimeout(() => setNombreGuardado(false), 2000);
+    } finally {
+      setGuardandoNombre(false);
+    }
+  }
+
+  const iniciales = inicialesParaMostrar(perfil);
+  const nombreCompleto = nombreParaMostrar(perfil);
+  const tieneNombre = Boolean(perfil.nombre && perfil.apellido);
+  const cambioSinGuardar =
+    nombreEditado.trim() !== perfil.nombre.trim() || apellidoEditado.trim() !== perfil.apellido.trim();
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10">
@@ -52,11 +75,65 @@ export default function CuentaPage() {
           {iniciales}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-semibold text-[var(--text-primary)]">{email || 'Cargando…'}</p>
+          {tieneNombre ? (
+            <p className="truncate text-[15px] font-semibold text-[var(--text-primary)]">{nombreCompleto}</p>
+          ) : (
+            <p className="truncate text-[15px] font-semibold text-[var(--text-tertiary)]">
+              {perfil.email ? 'Completa tu nombre abajo' : 'Cargando…'}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
+      <div className="mt-4 rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
+        <p className="text-[13px] font-semibold text-[var(--text-primary)]">Información personal</p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[var(--text-secondary)]">Nombre</span>
+            <input
+              type="text"
+              value={nombreEditado}
+              onChange={(e) => setNombreEditado(e.target.value)}
+              placeholder="Ana"
+              className="h-11 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--bg)] px-3 text-[14px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[var(--text-secondary)]">Apellido</span>
+            <input
+              type="text"
+              value={apellidoEditado}
+              onChange={(e) => setApellidoEditado(e.target.value)}
+              placeholder="López"
+              className="h-11 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--bg)] px-3 text-[14px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+            />
+          </label>
+        </div>
+        <label className="mt-3 flex flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-[var(--text-secondary)]">Correo electrónico</span>
+          <p className="h-11 flex items-center rounded-[var(--radius-button)] bg-[var(--surface-2)] px-3 text-[14px] text-[var(--text-tertiary)]">
+            {perfil.email || 'Cargando…'}
+          </p>
+        </label>
+        {cambioSinGuardar && (
+          <button
+            type="button"
+            onClick={guardarNombre}
+            disabled={guardandoNombre || !nombreEditado.trim() || !apellidoEditado.trim()}
+            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--accent)] text-[13px] font-semibold text-[var(--bg)] disabled:opacity-40"
+          >
+            {guardandoNombre ? 'Guardando…' : 'Guardar'}
+          </button>
+        )}
+        {nombreGuardado && (
+          <p className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-[var(--status-success)]">
+            <Check size={13} strokeWidth={3} aria-hidden="true" />
+            Guardado
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[13px] text-[var(--text-secondary)]">Tu plan</p>
@@ -72,14 +149,14 @@ export default function CuentaPage() {
           <div className="mt-4 flex flex-col gap-2">
             {plan === 'free' && (
               <a
-                href={hotmartCheckoutUrl('pro', { email, userId })}
+                href={hotmartCheckoutUrl('pro', { email: perfil.email, userId })}
                 className="flex h-11 items-center justify-center rounded-[var(--radius-button)] bg-[var(--accent)] px-4 text-[13px] font-semibold text-[var(--bg)]"
               >
                 Pasar a Pro — $7.99/mes
               </a>
             )}
             <a
-              href={hotmartCheckoutUrl('premium', { email, userId })}
+              href={hotmartCheckoutUrl('premium', { email: perfil.email, userId })}
               className="flex h-11 items-center justify-center rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] px-4 text-[13px] font-semibold text-[var(--accent)]"
             >
               Pasar a Premium — $14.99/mes
