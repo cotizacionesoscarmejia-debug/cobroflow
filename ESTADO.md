@@ -56,10 +56,40 @@ la pruebe.**
   de esta fase), es el caso ideal para probar "Completa tu nombre" en Cuenta.
 - Commit pendiente de push en este mismo turno.
 
-**Próximas fases (NO empezar sin que el usuario confirme la Fase 2):**
-Fase 3 login con contraseña → Fase 4 PDF Premium → Fase 5 IA Premium (Claude/Anthropic, el
-usuario debe crear cuenta en console.anthropic.com y poner `ANTHROPIC_API_KEY` en Vercel cuando
-llegue esa fase) → Fase 6 onboarding guiado.
+**FASE 3 — Login con correo y contraseña (reemplaza el enlace mágico): ✅ HECHA, DESPLEGADA Y
+VERIFICADA de punta a punta con una prueba real contra producción.**
+- Nuevas pantallas: `/registro` (nombre, apellido, correo, contraseña + confirmar — envía correo
+  de verificación), `/recuperar-contrasena` (pide el correo, mensaje siempre genérico para no
+  revelar si existe la cuenta), `/restablecer-contrasena` (mismo patrón anti-escáner que
+  `/confirmar`: exige un tap humano antes de `verifyOtp`, luego pide la nueva contraseña).
+  `/login` quedó reducido a SOLO correo+contraseña, con enlaces a los otros dos flujos.
+- `handle_new_user` (trigger) ahora también copia `nombre`/`apellido` desde los metadatos del
+  registro (`raw_user_meta_data`) — cambio aditivo, no toca lo que ya hacía con `full_name`.
+- Plantilla de correo "Reset password" en Supabase corregida al mismo patrón `token_hash` que
+  "Confirm sign up" y "Magic link or OTP" (antes usaba `{{ .ConfirmationURL }}`, el mismo bug ya
+  resuelto para las otras dos — quedaría rota si no se corregía también aquí).
+  "Confirm email" ya estaba activo en Supabase (Authentication → Sign In/Providers) — no hubo que
+  cambiar nada ahí.
+- Paywall y `/confirmar` actualizados: el botón de cada plan y el "enlace vencido" ahora llevan a
+  `/registro` (antes `/login`, que ya no crea cuentas).
+- **Prueba real contra producción**: se creó una cuenta de verdad vía la API
+  (`cobroflow.prueba.fase3.…@gmail.com`) → `status 200`, correo de verificación enviado de
+  verdad, y se confirmó por SQL que el perfil quedó creado con `nombre="Prueba"`,
+  `apellido="Fase3"`, `full_name="Prueba Fase3"` — la cuenta de prueba se borró después
+  (`DELETE FROM auth.users …`), no quedó basura en producción.
+- ⚠️ Cuentas existentes creadas antes de esta fase (como `ogames2003@gmail.com`) NO tienen
+  contraseña todavía — la crean la primera vez con "¿Olvidaste tu contraseña?" en `/login`. Cero
+  pérdida de datos: mismo `user.id`, mismos clientes/proyectos/pagos/plan.
+- `tsc`/`build` limpios (22 rutas). Verificación visual local: `/registro` y `/login` se ven
+  correctas. Pendiente de que el usuario haga la prueba real (crear cuenta con su propio correo,
+  o usar "olvidé mi contraseña" en su cuenta existente) para confirmar que el correo le llega
+  bien formateado.
+- Commit: `f38b596`.
+
+**Próximas fases (NO empezar sin que el usuario confirme la Fase 3):**
+Fase 4 PDF Premium → Fase 5 IA Premium (Claude/Anthropic, el usuario debe crear cuenta en
+console.anthropic.com y poner `ANTHROPIC_API_KEY` en Vercel cuando llegue esa fase) → Fase 6
+onboarding guiado.
 
 ⏸️ CHECKPOINT — Sesión 6: "no encuentro cómo iniciar sesión, siempre me manda a crear cuenta
 gratis" — RESUELTO. La landing ya tenía un enlace "Entrar" en la esquina superior derecha
