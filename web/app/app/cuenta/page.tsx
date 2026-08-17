@@ -17,6 +17,7 @@ import {
   obtenerTasas,
 } from '@/lib/app-data';
 import { generarReportePDF, type PeriodoReporte } from '@/lib/pdf-report';
+import { generarAnalisisPDF } from '@/lib/pdf-analisis';
 
 interface Analisis {
   resumen: string;
@@ -53,6 +54,7 @@ export default function CuentaPage() {
   const [usadosEsteMes, setUsadosEsteMes] = useState(0);
   const [limiteMes, setLimiteMes] = useState(10);
   const [cargandoAnalisis, setCargandoAnalisis] = useState(false);
+  const [analisisFecha, setAnalisisFecha] = useState<string>('');
 
   useEffect(() => {
     const supabase = createClient();
@@ -84,6 +86,7 @@ export default function CuentaPage() {
                 recomendaciones: data.ultimo.recomendaciones ?? [],
                 proximos_pasos: data.ultimo.proximos_pasos ?? [],
               });
+              setAnalisisFecha(data.ultimo.created_at ?? '');
             }
             setUsadosEsteMes(data.usadosEsteMes ?? 0);
             setLimiteMes(data.limiteMes ?? 10);
@@ -114,12 +117,18 @@ export default function CuentaPage() {
         return;
       }
       setAnalisis(data.analisis);
+      setAnalisisFecha(new Date().toISOString());
       setUsadosEsteMes(data.usadosEsteMes ?? usadosEsteMes + 1);
     } catch {
       setErrorAnalisis('No pudimos generar el análisis. Intenta de nuevo.');
     } finally {
       setAnalizando(false);
     }
+  }
+
+  function exportarAnalisisPDF() {
+    if (!analisis) return;
+    generarAnalisisPDF(analisis, perfil, analisisFecha ? new Date(analisisFecha) : new Date());
   }
 
   async function cerrarSesion() {
@@ -424,15 +433,27 @@ export default function CuentaPage() {
               {usadosEsteMes} de {limiteMes} análisis usados este mes
             </p>
             {errorAnalisis && <p className="mt-2 text-[12px] font-medium text-[var(--status-error)]">{errorAnalisis}</p>}
-            <button
-              type="button"
-              onClick={analizarNegocio}
-              disabled={analizando || cargandoAnalisis || usadosEsteMes >= limiteMes}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--accent)] text-[13px] font-semibold text-[var(--bg)] disabled:opacity-40"
-            >
-              <Sparkles size={15} aria-hidden="true" />
-              {analizando ? 'Analizando…' : analisis ? 'Analizar de nuevo' : 'Analizar mi negocio'}
-            </button>
+            <div className="mt-3 flex gap-2">
+              {analisis && (
+                <button
+                  type="button"
+                  onClick={exportarAnalisisPDF}
+                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] text-[13px] font-semibold text-[var(--accent)]"
+                >
+                  <FileDown size={15} aria-hidden="true" />
+                  Exportar a PDF
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={analizarNegocio}
+                disabled={analizando || cargandoAnalisis || usadosEsteMes >= limiteMes}
+                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--accent)] text-[13px] font-semibold text-[var(--bg)] disabled:opacity-40"
+              >
+                <Sparkles size={15} aria-hidden="true" />
+                {analizando ? 'Analizando…' : analisis ? 'Analizar de nuevo' : 'Analizar mi negocio'}
+              </button>
+            </div>
           </>
         ) : (
           <a

@@ -126,14 +126,21 @@ Commit: `6e7674b`.
 - Botón "Analizar mi negocio" en Cuenta (mismo patrón que el PDF de la Fase 4): Premium ve el
   último análisis guardado al entrar + puede regenerar; Free/Pro ven upsell.
 - `tsc`/`build` limpios (23 rutas, incluye `/api/ai/analizar-negocio`).
-- ⚠️ **PENDIENTE — dos cosas antes de que funcione en producción:**
-  1. Aplicar la migración `web/supabase/migrations/20260817000000_ai_analysis.sql` (crea la tabla
-     `ai_analysis` con RLS) en el proyecto real de Supabase (`lacvctwsgkehemhdhqvx`). El agente
-     intentó hacerlo por el navegador automatizado pero la sesión de Supabase ya no estaba
-     logueada ahí — se le pidió al usuario que la aplique él mismo o inicie sesión para que el
-     agente la corra.
-  2. El usuario debe crear su cuenta en console.anthropic.com y poner `ANTHROPIC_API_KEY` en las
-     variables de entorno de Vercel — el agente nunca maneja esa clave.
+- ✅ **Migración aplicada y verificada en producción** (`lacvctwsgkehemhdhqvx`): el usuario inició
+  sesión en Supabase dentro del navegador del agente, y el agente corrió la migración
+  `20260817000000_ai_analysis.sql`. Verificado con SQL directo: las 9 columnas existen con los
+  tipos correctos y `relrowsecurity = true` (RLS activo) en `ai_analysis`.
+- ✅ **`ANTHROPIC_API_KEY` configurada por el usuario en Vercel** (cuenta creada en
+  console.anthropic.com, clave sin fecha de vencimiento porque no hay proceso de rotación
+  todavía) y ya le dio Redeploy.
+- ✅ **Verificado por el usuario en producción: "Funciona perfecto."**
+- ✅ **Extra pedido por el usuario tras probarlo — exportar el análisis a PDF**: nuevo botón
+  "Exportar a PDF" junto a "Analizar de nuevo" (solo visible si ya hay un análisis cargado).
+  `lib/pdf-analisis.ts` genera el PDF 100% en el navegador con el mismo contenido que ya devolvió
+  la IA (resumen, lo que va bien, alertas, recomendaciones, próximos pasos) — no vuelve a llamar
+  a la IA. Incluye nota de aislamiento ("esto es una guía, no asesoría financiera profesional").
+  Verificado con `tsc`/`build` limpios y prueba de humo en Node (PDF de ~9KB, 1 página, sin
+  errores). Fase 5 queda 100% cerrada.
 
 **Fase 6 (después de la 5):** onboarding guiado.
 
