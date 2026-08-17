@@ -142,7 +142,26 @@ Commit: `6e7674b`.
   Verificado con `tsc`/`build` limpios y prueba de humo en Node (PDF de ~9KB, 1 página, sin
   errores). Fase 5 queda 100% cerrada.
 
-**Fase 6 (después de la 5):** onboarding guiado.
+**FASE 6 — Recorrido guiado inicial: ✅ HECHA, DESPLEGADA.** A pedido del usuario, se construyó
+inmediatamente después de confirmar la Fase 5. Overlay de 4 pasos (bottom-sheet en mobile, modal
+centrado en desktop) que se muestra UNA sola vez al entrar al Dashboard: (1) qué es el Dashboard,
+(2) el botón + para agregar clientes, (3) el Centro de Cobros, (4) Cuenta/reportes/IA. Cada paso
+tiene su ícono (mismos íconos del BottomNav), indicador de puntos, botón "Siguiente"/"Empezar" y
+opción de saltar (×) o tocar el fondo. Se guarda con `profiles.tour_completado` (nueva columna,
+migración `20260817010000_tour_completado.sql`, aplicada y verificada en producción) — no depende
+del dispositivo/localStorage, así que no reaparece si el usuario cambia de celular a compu.
+`lib/app-data.ts`: `obtenerTourCompletado`/`marcarTourCompletado`. Componente:
+`components/app/RecorridoGuiado.tsx`, montado en `app/app/page.tsx` (Dashboard).
+Verificado: `tsc`/`build` limpios (23 rutas) y la interacción completa (avance de los 4 pasos,
+cambio de texto/botón en cada uno) probada en una página temporal aislada — se comprobó por DOM
+(`getBoundingClientRect`/`elementFromPoint`) que el overlay cubre el 100% del viewport a 375px;
+el screenshot del navegador automatizado mostró un recorte visual incorrecto en esa página local
+(problema conocido de la herramienta con Turbopack en dev, no del código — confirmado que NO
+pasaba en la misma sesión contra Supabase), la página de prueba se borró después de verificar.
+Sin revisor-visual formal (es un overlay sobre el Dashboard ya aprobado, no una pantalla/ruta
+nueva — política del SO para pantallas secundarias). Pendiente: que el usuario lo vea en vivo la
+próxima vez que entre con una cuenta que no haya completado el tour (su cuenta actual ya tiene
+`tour_completado` en `false` por defecto, así que lo debería ver en su próximo login).
 
 ⏸️ CHECKPOINT — Sesión 6: "no encuentro cómo iniciar sesión, siempre me manda a crear cuenta
 gratis" — RESUELTO. La landing ya tenía un enlace "Entrar" en la esquina superior derecha

@@ -254,6 +254,27 @@ export async function actualizarNombre(nombre: string, apellido: string): Promis
   if (error) throw error;
 }
 
+// ── Recorrido guiado inicial: un flag por cuenta, se muestra una sola vez. ──
+
+export async function obtenerTourCompletado(): Promise<boolean> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return true;
+  const { data } = await supabase.from('profiles').select('tour_completado').eq('id', user.id).single();
+  return data?.tour_completado ?? false;
+}
+
+export async function marcarTourCompletado(): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('profiles').update({ tour_completado: true }).eq('id', user.id);
+}
+
 export async function actualizarNegocio(nombreNegocio: string): Promise<void> {
   const supabase = createClient();
   const {

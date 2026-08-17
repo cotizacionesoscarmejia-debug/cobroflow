@@ -7,6 +7,7 @@ import { Plus, TrendingUp, ChevronRight, Check, ArrowRightLeft } from 'lucide-re
 import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
+import { RecorridoGuiado } from '@/components/app/RecorridoGuiado';
 import {
   obtenerDB,
   proyectosConDatos,
@@ -187,6 +188,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative overflow-hidden">
+      <RecorridoGuiado />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px]"
