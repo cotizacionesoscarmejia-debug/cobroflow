@@ -95,10 +95,27 @@ VERIFICADA de punta a punta con una prueba real contra producción.**
   bien formateado.
 - Commit: `f38b596`.
 
-**Próximas fases (NO empezar sin que el usuario confirme la Fase 3):**
-Fase 4 PDF Premium → Fase 5 IA Premium (Claude/Anthropic, el usuario debe crear cuenta en
-console.anthropic.com y poner `ANTHROPIC_API_KEY` en Vercel cuando llegue esa fase) → Fase 6
-onboarding guiado.
+**FASE 4 — Exportación a PDF para Premium: ✅ HECHA y DESPLEGADA.** Botón "Descargar reporte PDF"
+en Cuenta, solo Premium (Free/Pro ven upgrade). Se genera 100% en el navegador con `jspdf` +
+`jspdf-autotable` (sin costo de servidor), usando datos reales del usuario vía `obtenerDB()` +
+`obtenerTasas()` — nunca datos ficticios. Contenido: nombre, nombre del negocio (nuevo campo
+opcional en Cuenta → Información personal, columna `profiles.nombre_negocio`), fecha de
+generación, período elegido (Este mes/Últimos 3 meses/Todo el historial — selector en la propia
+Cuenta), resumen financiero POR MONEDA (nunca suma monedas distintas — misma regla de la Fase 1),
+total consolidado solo si hay tasa configurada, estadísticas (clientes, proyectos, % cobrado,
+ticket promedio), gráfica simple de barras (cobrado/pendiente/atrasado), tabla de clientes
+principales y tabla de proyectos. Gastos: como CobroFlow todavía no los registra, el PDF lo dice
+explícitamente en vez de inventar un número. Branding discreto (franja verde + "CobroFlow ·
+cobroflow.app") y numeración de páginas. Código en `lib/pdf-report.ts`.
+Verificado: `tsc`/`build` limpios (22 rutas) y una prueba de humo en Node ejecutando la misma
+lógica de jsPDF+autoTable con datos de ejemplo (PDF de ~5KB generado sin errores). Pendiente:
+que el usuario descargue un reporte real desde su cuenta Premium (que ya tiene los 10 clientes de
+prueba) para la verificación visual final — el agente no tiene sesión propia para probarlo en vivo.
+Commit: `6e7674b`.
+
+**Próximas fases (NO empezar sin que el usuario confirme la Fase 4):**
+Fase 5 IA Premium (Claude/Anthropic, el usuario debe crear cuenta en console.anthropic.com y
+poner `ANTHROPIC_API_KEY` en Vercel cuando llegue esa fase) → Fase 6 onboarding guiado.
 
 ⏸️ CHECKPOINT — Sesión 6: "no encuentro cómo iniciar sesión, siempre me manda a crear cuenta
 gratis" — RESUELTO. La landing ya tenía un enlace "Entrar" en la esquina superior derecha
