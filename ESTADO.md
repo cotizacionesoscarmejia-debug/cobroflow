@@ -77,9 +77,18 @@ VERIFICADA de punta a punta con una prueba real contra producción.**
   verdad, y se confirmó por SQL que el perfil quedó creado con `nombre="Prueba"`,
   `apellido="Fase3"`, `full_name="Prueba Fase3"` — la cuenta de prueba se borró después
   (`DELETE FROM auth.users …`), no quedó basura en producción.
-- ⚠️ Cuentas existentes creadas antes de esta fase (como `ogames2003@gmail.com`) NO tienen
-  contraseña todavía — la crean la primera vez con "¿Olvidaste tu contraseña?" en `/login`. Cero
-  pérdida de datos: mismo `user.id`, mismos clientes/proyectos/pagos/plan.
+- ⚠️ Cuentas existentes creadas antes de esta fase (como `ogames2003@gmail.com`) NO tenían
+  contraseña — la crean la primera vez con "¿Olvidaste tu contraseña?" en `/login`. Cero pérdida
+  de datos: mismo `user.id`, mismos clientes/proyectos/pagos/plan.
+- **BUG encontrado y RESUELTO (2026-08-17):** al crear la nueva contraseña, `/restablecer-contrasena`
+  mostraba "no pudimos guardar tu contraseña, intenta de nuevo" en bucle aunque la contraseña SÍ
+  se había guardado en un intento anterior. Causa: Supabase rechaza `updateUser({password})` con
+  el error "New password should be different from the old password" (`error_code: same_password`)
+  cuando la contraseña enviada ya es la guardada — no es un fallo real. Confirmado con SQL directo
+  sobre `auth.users` que `encrypted_password` de `ogames2003@gmail.com` ya estaba seteado antes de
+  aplicar el fix. Ahora ese error específico se trata como éxito. Verificado por `tsc`, desplegado
+  (commit `24d3f83`). El usuario ya puede iniciar sesión directo con correo+la contraseña que puso
+  — no necesita repetir "olvidé mi contraseña".
 - `tsc`/`build` limpios (22 rutas). Verificación visual local: `/registro` y `/login` se ven
   correctas. Pendiente de que el usuario haga la prueba real (crear cuenta con su propio correo,
   o usar "olvidé mi contraseña" en su cuenta existente) para confirmar que el correo le llega
