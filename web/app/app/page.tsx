@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { Plus, TrendingUp, ChevronRight, Check } from 'lucide-react';
+import { Plus, TrendingUp, ChevronRight, Check, ArrowRightLeft } from 'lucide-react';
 import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
@@ -11,9 +11,14 @@ import { createClient } from '@/lib/supabase/client';
 import {
   obtenerDB,
   proyectosConDatos,
-  cobradoEsteMes,
+  cobradoEsteMesPorMoneda,
   diasAtraso,
+  totalesPorMoneda,
+  totalConsolidado,
+  obtenerPerfilMoneda,
+  obtenerTasas,
   type ProyectoConDatos,
+  type TasaCambio,
 } from '@/lib/app-data';
 import { simboloMoneda } from '@/lib/onboarding';
 
@@ -44,15 +49,117 @@ function SkeletonDashboard() {
   );
 }
 
+/** Un solo número grande si hay 1 moneda; una lista compacta si hay varias — nunca las suma. */
+function MontoHero({ totales }: { totales: Record<string, number> }) {
+  const entradas = Object.entries(totales);
+  if (entradas.length <= 1) {
+    const [moneda, monto] = entradas[0] ?? ['USD', 0];
+    return (
+      <p className="mt-1 text-[38px] font-bold leading-none tabular-nums [font-family:var(--font-display)]">
+        <NumeroAnimado valor={monto} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2 flex flex-col gap-1">
+      {entradas.map(([moneda, monto]) => (
+        <p key={moneda} className="text-[22px] font-bold leading-none tabular-nums [font-family:var(--font-display)]">
+          <NumeroAnimado valor={monto} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Versión compacta del mismo patrón para las cards de la grilla (Por cobrar / Atrasado / Próximos). */
+function MontoCompacto({ totales, tono }: { totales: Record<string, number>; tono?: 'error' }) {
+  const entradas = Object.entries(totales);
+  const color = tono === 'error' && entradas.some(([, m]) => m > 0) ? 'var(--status-error)' : 'var(--text-primary)';
+  if (entradas.length === 0) {
+    return (
+      <p className="mt-1 text-[22px] font-bold tabular-nums [font-family:var(--font-display)]" style={{ color }}>
+        —
+      </p>
+    );
+  }
+  if (entradas.length === 1) {
+    const [moneda, monto] = entradas[0];
+    return (
+      <p className="mt-1 text-[22px] font-bold tabular-nums [font-family:var(--font-display)]" style={{ color }}>
+        {moneda} {simboloMoneda(moneda)}
+        {monto.toLocaleString('es')}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-1 flex flex-col gap-0.5">
+      {entradas.map(([moneda, monto]) => (
+        <p key={moneda} className="text-[15px] font-bold tabular-nums [font-family:var(--font-display)]" style={{ color }}>
+          {moneda} {simboloMoneda(moneda)}
+          {monto.toLocaleString('es')}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Total consolidado en la moneda principal — solo si hay tasa para cada moneda distinta; nunca lo inventa. */
+function BloqueConsolidado({
+  totales,
+  monedaPrincipal,
+  tasas,
+}: {
+  totales: Record<string, number>;
+  monedaPrincipal: string;
+  tasas: TasaCambio[];
+}) {
+  const monedas = Object.keys(totales);
+  if (monedas.length <= 1) return null;
+  const { total, faltantes } = totalConsolidado(totales, monedaPrincipal, tasas);
+  return (
+    <motion.div {...entra(2.5)} className="mt-3 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--accent)_25%,transparent)] bg-[color-mix(in_oklab,var(--accent)_6%,transparent)] p-4">
+      <div className="flex items-center gap-2">
+        <ArrowRightLeft size={14} color="var(--accent)" aria-hidden="true" />
+        <p className="text-[12px] font-semibold text-[var(--accent)]">Valor consolidado</p>
+      </div>
+      {faltantes.length === 0 ? (
+        <>
+          <p className="mt-1 text-[24px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
+            {monedaPrincipal} {simboloMoneda(monedaPrincipal)}
+            {total.toLocaleString('es')}
+          </p>
+          <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
+            Conversión calculada con las tasas configuradas en tu cuenta.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)]">
+            No se puede calcular el total consolidado porque falta configurar el tipo de cambio{' '}
+            {faltantes.map((m) => `${m} → ${monedaPrincipal}`).join(', ')}.
+          </p>
+          <Link href="/app/cuenta/monedas" className="mt-2 inline-block text-[13px] font-semibold text-[var(--accent)]">
+            Configurar tipo de cambio
+          </Link>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
 export default function DashboardPage() {
   const [proyectos, setProyectos] = useState<ProyectoConDatos[] | null>(null);
-  const [cobrado, setCobrado] = useState(0);
+  const [cobradoPorMoneda, setCobradoPorMoneda] = useState<Record<string, number>>({});
+  const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
+  const [tasas, setTasas] = useState<TasaCambio[]>([]);
   const [email, setEmail] = useState('');
 
   useEffect(() => {
-    obtenerDB().then((db) => {
+    Promise.all([obtenerDB(), obtenerPerfilMoneda(), obtenerTasas()]).then(([db, perfil, tasasData]) => {
       setProyectos(proyectosConDatos(db));
-      setCobrado(cobradoEsteMes(db));
+      setCobradoPorMoneda(cobradoEsteMesPorMoneda(db));
+      setMonedaPrincipal(perfil.monedaPrincipal);
+      setTasas(tasasData);
     });
     createClient()
       .auth.getUser()
@@ -64,13 +171,16 @@ export default function DashboardPage() {
   const nombreUsuario = email ? email.split('@')[0].replace(/[._]/g, ' ') : '';
   const iniciales = email ? email.slice(0, 2).toUpperCase() : '··';
 
-  const moneda = proyectos[0]?.cliente.moneda ?? 'USD';
   const pendientes = proyectos.filter((p) => p.saldo > 0);
-  const pendiente = pendientes.reduce((s, p) => s + p.saldo, 0);
-  const atrasado = pendientes.filter((p) => p.estado === 'atrasado').reduce((s, p) => s + p.saldo, 0);
-  const proximos30 = pendientes
-    .filter((p) => p.estado === 'proximo' || p.estado === 'vence_hoy')
-    .reduce((s, p) => s + p.saldo, 0);
+  const pendientePorMoneda = totalesPorMoneda(pendientes.map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo })));
+  const atrasadoPorMoneda = totalesPorMoneda(
+    pendientes.filter((p) => p.estado === 'atrasado').map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo }))
+  );
+  const proximosPorMoneda = totalesPorMoneda(
+    pendientes
+      .filter((p) => p.estado === 'proximo' || p.estado === 'vence_hoy')
+      .map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo }))
+  );
   const necesitanAtencion = [...pendientes].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]).slice(0, 4);
 
   return (
@@ -116,9 +226,7 @@ export default function DashboardPage() {
             style={{ backgroundImage: 'repeating-linear-gradient(180deg, color-mix(in oklab, white 55%, transparent) 0 8px, transparent 8px 16px)' }}
           />
           <p className="text-[13px] opacity-85">Cobrado este mes</p>
-          <p className="mt-1 text-[38px] font-bold leading-none tabular-nums [font-family:var(--font-display)]">
-            <NumeroAnimado valor={cobrado} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
-          </p>
+          <MontoHero totales={cobradoPorMoneda} />
           <p className="mt-2 flex items-center gap-1.5 text-[12.5px] opacity-90">
             <TrendingUp size={14} aria-hidden="true" />
             Se actualiza cada vez que registras un pago
@@ -128,30 +236,20 @@ export default function DashboardPage() {
         <motion.div {...entra(2)} className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
             <p className="text-[12px] text-[var(--text-secondary)]">Por cobrar</p>
-            <p className="mt-1 text-[22px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-              {moneda} {simboloMoneda(moneda)}
-              {pendiente.toLocaleString('es')}
-            </p>
+            <MontoCompacto totales={pendientePorMoneda} />
           </div>
           <div className="rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
             <p className="text-[12px] text-[var(--text-secondary)]">Atrasado</p>
-            <p
-              className="mt-1 text-[22px] font-bold tabular-nums [font-family:var(--font-display)]"
-              style={{ color: atrasado > 0 ? 'var(--status-error)' : 'var(--text-primary)' }}
-            >
-              {moneda} {simboloMoneda(moneda)}
-              {atrasado.toLocaleString('es')}
-            </p>
+            <MontoCompacto totales={atrasadoPorMoneda} tono="error" />
           </div>
         </motion.div>
 
         <motion.div {...entra(3)} className="mt-3 rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
           <p className="text-[12px] text-[var(--text-secondary)]">Próximos 30 días</p>
-          <p className="mt-1 text-[20px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-            {moneda} {simboloMoneda(moneda)}
-            {proximos30.toLocaleString('es')}
-          </p>
+          <MontoCompacto totales={proximosPorMoneda} />
         </motion.div>
+
+        <BloqueConsolidado totales={pendientePorMoneda} monedaPrincipal={monedaPrincipal} tasas={tasas} />
 
         <motion.div {...entra(4)} className="mt-8 flex items-center justify-between">
           <h2 className="text-[16px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">

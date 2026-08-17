@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ChevronLeft, ChevronDown } from 'lucide-react';
 import { CtaFunnel } from '@/components/onboarding/ui';
 import { agregarClienteYProyecto } from '@/lib/app-data';
@@ -22,6 +23,7 @@ export default function NuevoClientePage() {
   const [anticipo, setAnticipo] = useState('');
   const [fecha, setFecha] = useState(hoyISO(14));
   const [error, setError] = useState<string | null>(null);
+  const [requierePro, setRequierePro] = useState(false);
 
   const [guardando, setGuardando] = useState(false);
 
@@ -41,6 +43,7 @@ export default function NuevoClientePage() {
       return;
     }
     setGuardando(true);
+    setRequierePro(false);
     try {
       await agregarClienteYProyecto(
         { clientes: [], proyectos: [], pagos: [] },
@@ -60,6 +63,9 @@ export default function NuevoClientePage() {
         setError('Llegaste al límite de 3 clientes del plan Free. Mejora a Pro para agregar más.');
       } else if (mensaje.includes('limite_free_proyectos')) {
         setError('Llegaste al límite de 5 proyectos del plan Free. Mejora a Pro para agregar más.');
+      } else if (mensaje.includes('limite_free_moneda')) {
+        setError('Trabaja con clientes internacionales con CobroFlow Pro. Con Pro puedes administrar clientes y proyectos en diferentes monedas.');
+        setRequierePro(true);
       } else {
         setError('No pudimos guardar tu cliente. Intenta de nuevo.');
       }
@@ -129,9 +135,16 @@ export default function NuevoClientePage() {
         </div>
 
         {error && (
-          <p role="alert" className="mt-4 text-[13px] font-medium text-[var(--status-error)]">
-            {error}
-          </p>
+          <div className="mt-4">
+            <p role="alert" className="text-[13px] font-medium text-[var(--status-error)]">
+              {error}
+            </p>
+            {requierePro && (
+              <Link href="/app/cuenta" className="mt-2 inline-block text-[13px] font-semibold text-[var(--accent)]">
+                Actualizar a Pro
+              </Link>
+            )}
+          </div>
         )}
 
         <div className="mt-8">

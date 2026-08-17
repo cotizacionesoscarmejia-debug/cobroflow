@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { LogOut, ChevronRight, Coins } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
+import { obtenerPerfilMoneda } from '@/lib/app-data';
 
 const NOMBRE_PLAN: Record<string, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' };
 
@@ -13,6 +15,7 @@ export default function CuentaPage() {
   const [email, setEmail] = useState('');
   const [userId, setUserId] = useState('');
   const [plan, setPlan] = useState<'free' | 'pro' | 'premium'>('free');
+  const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
 
   useEffect(() => {
     const supabase = createClient();
@@ -23,8 +26,9 @@ export default function CuentaPage() {
       }
       setEmail(user.email ?? '');
       setUserId(user.id);
-      const { data: perfil } = await supabase.from('profiles').select('plan').eq('id', user.id).single();
-      if (perfil) setPlan((perfil.plan as 'free' | 'pro' | 'premium') ?? 'free');
+      const perfil = await obtenerPerfilMoneda();
+      setPlan(perfil.plan);
+      setMonedaPrincipal(perfil.monedaPrincipal);
     });
   }, [router]);
 
@@ -83,6 +87,23 @@ export default function CuentaPage() {
           </div>
         )}
       </div>
+
+      <Link
+        href="/app/cuenta/monedas"
+        className="mt-4 flex items-center gap-3 rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]"
+      >
+        <span
+          aria-hidden="true"
+          className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-[var(--chip-bg)]"
+        >
+          <Coins size={18} color="var(--accent)" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold text-[var(--text-primary)]">Moneda y tipo de cambio</p>
+          <p className="truncate text-[12px] text-[var(--text-secondary)]">Moneda principal: {monedaPrincipal}</p>
+        </div>
+        <ChevronRight size={16} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true" />
+      </Link>
 
       <button
         type="button"

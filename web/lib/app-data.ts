@@ -177,6 +177,126 @@ export function cobradoEsteMes(db: DB): number {
   return db.pagos.filter((p) => p.fecha.slice(0, 7) === mesActual).reduce((s, p) => s + p.monto, 0);
 }
 
+export function cobradoEsteMesPorMoneda(db: DB): Record<string, number> {
+  const mesActual = hoyISO(0).slice(0, 7);
+  const items = db.pagos
+    .filter((p) => p.fecha.slice(0, 7) === mesActual)
+    .map((p) => {
+      const proyecto = db.proyectos.find((pr) => pr.id === p.proyectoId);
+      const cliente = proyecto ? db.clientes.find((c) => c.id === proyecto.clienteId) : undefined;
+      return { moneda: cliente?.moneda ?? 'USD', monto: p.monto };
+    });
+  return totalesPorMoneda(items);
+}
+
+// ── Multimoneda: nunca sumar montos de monedas distintas — se agrupan por
+// código de moneda y, si hay tasa configurada, se ofrece un total consolidado
+// aparte (nunca oculto: siempre se puede ver el desglose real). ──
+
+export interface TasaCambio {
+  monedaOrigen: string;
+  monedaDestino: string;
+  tasa: number;
+  actualizadoEn: string;
+}
+
+export interface PerfilMoneda {
+  plan: 'free' | 'pro' | 'premium';
+  monedaPrincipal: string;
+}
+
+export async function obtenerPerfilMoneda(): Promise<PerfilMoneda> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { plan: 'free', monedaPrincipal: 'USD' };
+  const { data } = await supabase.from('profiles').select('plan, moneda_principal').eq('id', user.id).single();
+  return {
+    plan: (data?.plan as 'free' | 'pro' | 'premium') ?? 'free',
+    monedaPrincipal: data?.moneda_principal ?? 'USD',
+  };
+}
+
+export async function actualizarMonedaPrincipal(moneda: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('profiles').update({ moneda_principal: moneda }).eq('id', user.id);
+  if (error) throw error;
+}
+
+export async function obtenerTasas(): Promise<TasaCambio[]> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('exchange_rates')
+    .select('moneda_origen, moneda_destino, tasa, actualizado_en')
+    .eq('user_id', user.id);
+  return (data ?? []).map((t) => ({
+    monedaOrigen: t.moneda_origen,
+    monedaDestino: t.moneda_destino,
+    tasa: Number(t.tasa),
+    actualizadoEn: (t.actualizado_en as string).slice(0, 10),
+  }));
+}
+
+export async function guardarTasa(monedaOrigen: string, monedaDestino: string, tasa: number): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase
+    .from('exchange_rates')
+    .upsert(
+      { user_id: user.id, moneda_origen: monedaOrigen, moneda_destino: monedaDestino, tasa, actualizado_en: hoyISO(0) },
+      { onConflict: 'user_id,moneda_origen,moneda_destino' }
+    );
+  if (error) throw error;
+}
+
+/** Agrupa montos por moneda — la única forma correcta de sumar en una app multimoneda. */
+export function totalesPorMoneda(items: { moneda: string; monto: number }[]): Record<string, number> {
+  const totales: Record<string, number> = {};
+  for (const item of items) {
+    totales[item.moneda] = (totales[item.moneda] ?? 0) + item.monto;
+  }
+  return totales;
+}
+
+/**
+ * Convierte un total consolidado a la moneda principal SOLO si existe tasa
+ * configurada para cada moneda distinta de la principal. Si falta alguna,
+ * no inventa el total: devuelve qué monedas faltan por configurar.
+ */
+export function totalConsolidado(
+  totalesPorMonedaMap: Record<string, number>,
+  monedaPrincipal: string,
+  tasas: TasaCambio[]
+): { total: number; faltantes: string[] } {
+  let total = 0;
+  const faltantes: string[] = [];
+  for (const [moneda, monto] of Object.entries(totalesPorMonedaMap)) {
+    if (moneda === monedaPrincipal) {
+      total += monto;
+      continue;
+    }
+    const tasa = tasas.find((t) => t.monedaOrigen === moneda && t.monedaDestino === monedaPrincipal);
+    if (!tasa) {
+      faltantes.push(moneda);
+      continue;
+    }
+    total += monto * tasa.tasa;
+  }
+  return { total, faltantes };
+}
+
 // Migra el primer cliente cargado en el onboarding (sessionStorage) a la cuenta
 // real recién creada — se llama una sola vez desde /confirmar tras el login.
 export async function migrarClienteDeOnboarding(): Promise<void> {
