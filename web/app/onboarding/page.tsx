@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Wallet } from 'lucide-react';
 import { Marca, EncabezadoPaso, Chip, PasoTransicion, CtaFunnel, NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
-import { guardarEstado, leerEstado, saldoPendiente, MONEDAS, PERFILES } from '@/lib/onboarding';
+import { guardarEstado, leerEstado, saldoPendiente, simboloMoneda, MONEDAS, PERFILES } from '@/lib/onboarding';
 
 type Paso = 'perfil' | 'moneda' | 'cliente' | 'calculando' | 'resultado';
 const ORDEN: Paso[] = ['perfil', 'moneda', 'cliente', 'calculando', 'resultado'];
@@ -238,18 +238,20 @@ export default function OnboardingPage() {
                   <Perforacion />
                   <p className="text-[13px] text-[var(--text-secondary)]">Saldo pendiente</p>
                   <p className="mt-1 text-[42px] font-bold leading-none tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-                    <NumeroAnimado valor={saldo} prefijo={`${moneda ?? 'USD'} $`} />
+                    <NumeroAnimado valor={saldo} prefijo={`${moneda ?? 'USD'} ${simboloMoneda(moneda)}`} />
                   </p>
                   <div className="mt-5 flex justify-between border-t border-[color-mix(in_oklab,var(--text-tertiary)_20%,transparent)] pt-4 text-[13px]">
                     <span className="text-[var(--text-secondary)]">Precio total</span>
                     <span className="tabular-nums font-medium text-[var(--text-primary)]">
-                      {moneda ?? 'USD'} ${(Number(total.replace(',', '.')) || 0).toLocaleString('es')}
+                      {moneda ?? 'USD'} {simboloMoneda(moneda)}
+                      {(Number(total.replace(',', '.')) || 0).toLocaleString('es')}
                     </span>
                   </div>
                   <div className="mt-2 flex justify-between text-[13px]">
                     <span className="text-[var(--text-secondary)]">Ya te pagó</span>
                     <span className="tabular-nums font-medium text-[var(--text-primary)]">
-                      {moneda ?? 'USD'} ${(Number(anticipo.replace(',', '.')) || 0).toLocaleString('es')}
+                      {moneda ?? 'USD'} {simboloMoneda(moneda)}
+                      {(Number(anticipo.replace(',', '.')) || 0).toLocaleString('es')}
                     </span>
                   </div>
                 </motion.div>

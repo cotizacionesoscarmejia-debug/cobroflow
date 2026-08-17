@@ -5,12 +5,13 @@ import { Copy, Check, MessageCircle } from 'lucide-react';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { obtenerDB, proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
+import { simboloMoneda } from '@/lib/onboarding';
 
 const ORDEN_URGENCIA: Record<string, number> = { atrasado: 0, vence_hoy: 1, proximo: 2, al_dia: 3, pagado: 4 };
 
 function mensajeRecordatorio(p: ProyectoConDatos): string {
   const dias = diasAtraso(p);
-  const base = `Hola, ${p.cliente.nombre} 👋. Espero que estés muy bien. Te escribo para recordarte que permanece pendiente un pago de ${p.cliente.moneda} $${p.saldo.toLocaleString('es')}`;
+  const base = `Hola, ${p.cliente.nombre} 👋. Espero que estés muy bien. Te escribo para recordarte que permanece pendiente un pago de ${p.cliente.moneda} ${simboloMoneda(p.cliente.moneda)}${p.saldo.toLocaleString('es')}`;
   const proyectoTxt = p.nombre ? ` correspondiente al proyecto ${p.nombre}` : '';
   if (p.estado === 'atrasado' && dias > 0) {
     return `${base}${proyectoTxt}, que lleva ${dias} día${dias === 1 ? '' : 's'} de atraso. Cuando puedas, ¿me confirmas el pago? ¡Muchas gracias!`;
@@ -73,7 +74,8 @@ export default function CobrosPage() {
                 </div>
 
                 <p className="mt-3 text-[20px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-                  {p.cliente.moneda} ${p.saldo.toLocaleString('es')}
+                  {p.cliente.moneda} {simboloMoneda(p.cliente.moneda)}
+                  {p.saldo.toLocaleString('es')}
                 </p>
 
                 <div className="mt-3 rounded-[var(--radius-button)] bg-[var(--bg)] p-3 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">

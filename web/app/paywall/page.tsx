@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { ChevronLeft } from 'lucide-react';
 import { Marca, NumeroAnimado } from '@/components/onboarding/ui';
 import { OfertaPlanes } from '@/components/landing/OfertaPlanes';
-import { leerEstado, saldoPendiente, type EstadoOnboarding } from '@/lib/onboarding';
+import { leerEstado, saldoPendiente, simboloMoneda, type EstadoOnboarding } from '@/lib/onboarding';
 
 export default function PaywallPage() {
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function PaywallPage() {
           <p className="mt-3 text-[15px] text-[var(--text-secondary)]">
             {estado.primerCliente.nombre} te debe{' '}
             <span className="font-semibold text-[var(--text-primary)] tabular-nums">
-              <NumeroAnimado valor={saldo} prefijo={`${moneda} $`} />
+              <NumeroAnimado valor={saldo} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
             </span>
             . Elige con qué plan quieres seguir.
           </p>

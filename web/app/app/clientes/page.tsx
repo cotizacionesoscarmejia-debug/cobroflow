@@ -6,6 +6,7 @@ import { Plus, Search } from 'lucide-react';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { obtenerDB, proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
+import { simboloMoneda } from '@/lib/onboarding';
 
 interface ClienteResumen {
   id: string;
@@ -111,7 +112,9 @@ export default function ClientesPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{c.nombre}</p>
                 <p className="text-[12px] text-[var(--text-secondary)]">
-                  {c.saldo > 0 ? `Debe ${c.moneda} $${c.saldo.toLocaleString('es')}` : 'Sin saldo pendiente'}
+                  {c.saldo > 0
+                    ? `Debe ${c.moneda} ${simboloMoneda(c.moneda)}${c.saldo.toLocaleString('es')}`
+                    : 'Sin saldo pendiente'}
                 </p>
               </div>
               <EstadoBadge estado={c.peorEstado} dias={diasAtraso(c.peorProyecto)} />

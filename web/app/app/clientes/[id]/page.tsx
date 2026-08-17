@@ -7,6 +7,7 @@ import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion, CheckCustom } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { obtenerDB, proyectosConDatos, diasAtraso, registrarPago, type ProyectoConDatos } from '@/lib/app-data';
+import { simboloMoneda } from '@/lib/onboarding';
 
 export default function ClienteDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -80,18 +81,20 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
         <Perforacion tono={saldoTotal > 0 ? 'accent' : 'neutro'} />
         <p className="text-[13px] text-[var(--text-secondary)]">Saldo pendiente</p>
         <p className="mt-1 text-[32px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-          <NumeroAnimado valor={saldoTotal} prefijo={`${cliente.moneda} $`} />
+          <NumeroAnimado valor={saldoTotal} prefijo={`${cliente.moneda} ${simboloMoneda(cliente.moneda)}`} />
         </p>
         <div className="mt-3 flex justify-between border-t border-[color-mix(in_oklab,var(--text-tertiary)_20%,transparent)] pt-3 text-[13px]">
           <span className="text-[var(--text-secondary)]">Total facturado</span>
           <span className="tabular-nums font-medium text-[var(--text-primary)]">
-            {cliente.moneda} ${(saldoTotal + pagadoTotal).toLocaleString('es')}
+            {cliente.moneda} {simboloMoneda(cliente.moneda)}
+            {(saldoTotal + pagadoTotal).toLocaleString('es')}
           </span>
         </div>
         <div className="mt-1 flex justify-between text-[13px]">
           <span className="text-[var(--text-secondary)]">Ya pagado</span>
           <span className="tabular-nums font-medium text-[var(--status-success)]">
-            {cliente.moneda} ${pagadoTotal.toLocaleString('es')}
+            {cliente.moneda} {simboloMoneda(cliente.moneda)}
+            {pagadoTotal.toLocaleString('es')}
           </span>
         </div>
       </div>
@@ -105,7 +108,9 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{p.nombre}</p>
                 <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">
-                  {p.saldo > 0 ? `Saldo: ${cliente.moneda} $${p.saldo.toLocaleString('es')}` : 'Pagado por completo'}
+                  {p.saldo > 0
+                    ? `Saldo: ${cliente.moneda} ${simboloMoneda(cliente.moneda)}${p.saldo.toLocaleString('es')}`
+                    : 'Pagado por completo'}
                 </p>
               </div>
               <EstadoBadge estado={p.estado} dias={diasAtraso(p)} />

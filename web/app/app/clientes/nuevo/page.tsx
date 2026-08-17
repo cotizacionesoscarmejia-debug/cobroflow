@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronDown } from 'lucide-react';
 import { CtaFunnel } from '@/components/onboarding/ui';
 import { agregarClienteYProyecto } from '@/lib/app-data';
+import { MONEDAS } from '@/lib/onboarding';
 
 function hoyISO(offsetDias = 0): string {
   const d = new Date();
@@ -16,6 +17,7 @@ export default function NuevoClientePage() {
   const router = useRouter();
   const [nombre, setNombre] = useState('');
   const [proyecto, setProyecto] = useState('');
+  const [moneda, setMoneda] = useState<string>('USD');
   const [total, setTotal] = useState('');
   const [anticipo, setAnticipo] = useState('');
   const [fecha, setFecha] = useState(hoyISO(14));
@@ -44,7 +46,7 @@ export default function NuevoClientePage() {
         { clientes: [], proyectos: [], pagos: [] },
         {
           nombre: nombre.trim(),
-          moneda: 'USD',
+          moneda,
           proyecto: proyecto.trim(),
           precioTotal: totalNum,
           anticipo: anticipoNum,
@@ -90,8 +92,29 @@ export default function NuevoClientePage() {
         <div className="mt-6 flex flex-col gap-4">
           <Campo label="Nombre del cliente" placeholder="Ej. Clínica Nova" value={nombre} onChange={setNombre} autoFocus />
           <Campo label="Proyecto (opcional)" placeholder="Ej. Página web profesional" value={proyecto} onChange={setProyecto} />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-[var(--text-secondary)]">Moneda de este cliente</span>
+            <div className="relative">
+              <select
+                value={moneda}
+                onChange={(e) => setMoneda(e.target.value)}
+                className="h-14 w-full appearance-none rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 pr-11 text-[16px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+              >
+                {MONEDAS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={18}
+                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                aria-hidden="true"
+              />
+            </div>
+          </label>
           <div className="grid grid-cols-2 gap-3">
-            <Campo label="Precio total (USD)" placeholder="900" value={total} onChange={setTotal} numerico />
+            <Campo label={`Precio total (${moneda})`} placeholder="900" value={total} onChange={setTotal} numerico />
             <Campo label="Ya te pagó" placeholder="450" value={anticipo} onChange={setAnticipo} numerico />
           </div>
           <label className="flex flex-col gap-1.5">

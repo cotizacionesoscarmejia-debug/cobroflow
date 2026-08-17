@@ -15,6 +15,7 @@ import {
   diasAtraso,
   type ProyectoConDatos,
 } from '@/lib/app-data';
+import { simboloMoneda } from '@/lib/onboarding';
 
 const MotionLink = motion.create(Link);
 const ORDEN_URGENCIA: Record<string, number> = { atrasado: 0, vence_hoy: 1, proximo: 2, al_dia: 3, pagado: 4 };
@@ -116,7 +117,7 @@ export default function DashboardPage() {
           />
           <p className="text-[13px] opacity-85">Cobrado este mes</p>
           <p className="mt-1 text-[38px] font-bold leading-none tabular-nums [font-family:var(--font-display)]">
-            <NumeroAnimado valor={cobrado} prefijo={`${moneda} $`} />
+            <NumeroAnimado valor={cobrado} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
           </p>
           <p className="mt-2 flex items-center gap-1.5 text-[12.5px] opacity-90">
             <TrendingUp size={14} aria-hidden="true" />
@@ -128,7 +129,8 @@ export default function DashboardPage() {
           <div className="rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
             <p className="text-[12px] text-[var(--text-secondary)]">Por cobrar</p>
             <p className="mt-1 text-[22px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-              {moneda} ${pendiente.toLocaleString('es')}
+              {moneda} {simboloMoneda(moneda)}
+              {pendiente.toLocaleString('es')}
             </p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
@@ -137,7 +139,8 @@ export default function DashboardPage() {
               className="mt-1 text-[22px] font-bold tabular-nums [font-family:var(--font-display)]"
               style={{ color: atrasado > 0 ? 'var(--status-error)' : 'var(--text-primary)' }}
             >
-              {moneda} ${atrasado.toLocaleString('es')}
+              {moneda} {simboloMoneda(moneda)}
+              {atrasado.toLocaleString('es')}
             </p>
           </div>
         </motion.div>
@@ -145,7 +148,8 @@ export default function DashboardPage() {
         <motion.div {...entra(3)} className="mt-3 rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
           <p className="text-[12px] text-[var(--text-secondary)]">Próximos 30 días</p>
           <p className="mt-1 text-[20px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-            {moneda} ${proximos30.toLocaleString('es')}
+            {moneda} {simboloMoneda(moneda)}
+            {proximos30.toLocaleString('es')}
           </p>
         </motion.div>
 
@@ -197,7 +201,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-[14px] font-bold tabular-nums text-[var(--text-primary)]">
-                    {p.cliente.moneda} ${p.saldo.toLocaleString('es')}
+                    {p.cliente.moneda} {simboloMoneda(p.cliente.moneda)}
+                    {p.saldo.toLocaleString('es')}
                   </p>
                   <div className="mt-1">
                     <EstadoBadge estado={p.estado} dias={diasAtraso(p)} />

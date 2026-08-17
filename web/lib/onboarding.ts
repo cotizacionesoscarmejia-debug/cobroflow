@@ -45,6 +45,22 @@ export function saldoPendiente(c: PrimerCliente): number {
 
 export const MONEDAS = ['USD', 'MXN', 'COP', 'ARS', 'PEN', 'CLP', 'GTQ'] as const;
 
+// El símbolo real de cada moneda — no todas usan "$" (el quetzal usa "Q", el sol peruano "S/").
+// Mostrar "GTQ $" mezcla el símbolo del dólar con el código del quetzal; esto lo evita.
+const SIMBOLOS_MONEDA: Record<string, string> = {
+  USD: '$',
+  MXN: '$',
+  COP: '$',
+  ARS: '$',
+  PEN: 'S/',
+  CLP: '$',
+  GTQ: 'Q',
+};
+
+export function simboloMoneda(moneda?: string): string {
+  return SIMBOLOS_MONEDA[moneda ?? 'USD'] ?? '$';
+}
+
 export const PERFILES = [
   'Freelancer',
   'Profesional independiente',
