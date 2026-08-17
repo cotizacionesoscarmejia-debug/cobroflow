@@ -78,8 +78,8 @@ function ConfirmarForm() {
           <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-[var(--text-secondary)]">
             Puede que ya lo hayas usado o que haya vencido. Pide uno nuevo para entrar.
           </p>
-          <a href="/login" className="mt-6 text-[14px] font-semibold text-[var(--accent)]">
-            Pedir un enlace nuevo
+          <a href="/registro" className="mt-6 text-[14px] font-semibold text-[var(--accent)]">
+            Crear mi cuenta de nuevo
           </a>
         </>
       ) : (

@@ -76,7 +76,7 @@ export default function PaywallPage() {
               precioMes: '$0',
               descripcion: 'Para empezar a controlar tus cobros hoy mismo.',
               ctaLabel: 'Seguir gratis',
-              ctaHref: '/login?plan=free',
+              ctaHref: '/registro?plan=free',
               features: [
                 'Hasta 3 clientes activos',
                 'Hasta 5 proyectos',
@@ -90,7 +90,7 @@ export default function PaywallPage() {
               precioMes: '$7.99',
               descripcion: 'Para freelancers con varios clientes activos a la vez.',
               ctaLabel: 'Quiero seguimiento ilimitado',
-              ctaHref: '/login?plan=pro',
+              ctaHref: '/registro?plan=pro',
               destacado: true,
               badge: 'MÁS POPULAR',
               features: [
@@ -106,7 +106,7 @@ export default function PaywallPage() {
               precioMes: '$14.99',
               descripcion: 'Para quien quiere proyectar y entender su negocio a fondo.',
               ctaLabel: 'Quiero proyectar mi negocio',
-              ctaHref: '/login?plan=premium',
+              ctaHref: '/registro?plan=premium',
               features: [
                 'Todo lo de Pro, sin límites',
                 'Proyección de tu flujo de dinero',
