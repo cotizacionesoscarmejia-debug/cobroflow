@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, ChevronRight, Coins, Check, FileDown, Lock } from 'lucide-react';
+import { LogOut, ChevronRight, Coins, Check, FileDown, Lock, Sparkles, AlertTriangle, ListChecks, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
 import {
@@ -17,6 +17,14 @@ import {
   obtenerTasas,
 } from '@/lib/app-data';
 import { generarReportePDF, type PeriodoReporte } from '@/lib/pdf-report';
+
+interface Analisis {
+  resumen: string;
+  positivos: string[];
+  alertas: string[];
+  recomendaciones: string[];
+  proximos_pasos: string[];
+}
 
 const NOMBRE_PLAN: Record<string, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' };
 const PERIODOS: { valor: PeriodoReporte; etiqueta: string }[] = [
@@ -39,6 +47,12 @@ export default function CuentaPage() {
   const [periodoReporte, setPeriodoReporte] = useState<PeriodoReporte>('todo');
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const [errorPDF, setErrorPDF] = useState<string | null>(null);
+  const [analisis, setAnalisis] = useState<Analisis | null>(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
+  const [usadosEsteMes, setUsadosEsteMes] = useState(0);
+  const [limiteMes, setLimiteMes] = useState(10);
+  const [cargandoAnalisis, setCargandoAnalisis] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -55,8 +69,58 @@ export default function CuentaPage() {
       setNombreEditado(perfilUsuario.nombre);
       setApellidoEditado(perfilUsuario.apellido);
       setNegocioEditado(perfilUsuario.nombreNegocio);
+
+      if (perfilMoneda.plan === 'premium') {
+        setCargandoAnalisis(true);
+        try {
+          const res = await fetch('/api/ai/analizar-negocio');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.ultimo) {
+              setAnalisis({
+                resumen: data.ultimo.resumen,
+                positivos: data.ultimo.positivos ?? [],
+                alertas: data.ultimo.alertas ?? [],
+                recomendaciones: data.ultimo.recomendaciones ?? [],
+                proximos_pasos: data.ultimo.proximos_pasos ?? [],
+              });
+            }
+            setUsadosEsteMes(data.usadosEsteMes ?? 0);
+            setLimiteMes(data.limiteMes ?? 10);
+          }
+        } finally {
+          setCargandoAnalisis(false);
+        }
+      }
     });
   }, [router]);
+
+  async function analizarNegocio() {
+    setAnalizando(true);
+    setErrorAnalisis(null);
+    try {
+      const res = await fetch('/api/ai/analizar-negocio', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === 'limite_mensual_alcanzado') {
+          setErrorAnalisis(`Llegaste al límite de ${data.limiteMes} análisis este mes. Vuelve el próximo mes.`);
+        } else if (data.error === 'sin_datos') {
+          setErrorAnalisis('Agrega al menos un cliente antes de analizar tu negocio.');
+        } else if (data.error === 'servicio_no_configurado') {
+          setErrorAnalisis('El análisis con IA todavía no está disponible. Intenta más tarde.');
+        } else {
+          setErrorAnalisis('No pudimos generar el análisis. Intenta de nuevo.');
+        }
+        return;
+      }
+      setAnalisis(data.analisis);
+      setUsadosEsteMes(data.usadosEsteMes ?? usadosEsteMes + 1);
+    } catch {
+      setErrorAnalisis('No pudimos generar el análisis. Intenta de nuevo.');
+    } finally {
+      setAnalizando(false);
+    }
+  }
 
   async function cerrarSesion() {
     const supabase = createClient();
@@ -261,6 +325,113 @@ export default function CuentaPage() {
             >
               <FileDown size={15} aria-hidden="true" />
               {generandoPDF ? 'Generando…' : 'Descargar reporte PDF'}
+            </button>
+          </>
+        ) : (
+          <a
+            href={hotmartCheckoutUrl('premium', { email: perfil.email, userId })}
+            className="mt-4 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] text-[13px] font-semibold text-[var(--accent)]"
+          >
+            <Lock size={14} aria-hidden="true" />
+            Desbloquear con Premium
+          </a>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-[var(--chip-bg)]"
+          >
+            <Sparkles size={18} color="var(--accent)" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-[var(--text-primary)]">Análisis de tu negocio con IA</p>
+            <p className="truncate text-[12px] text-[var(--text-secondary)]">
+              {plan === 'premium' ? 'Un vistazo interpretado de cómo va tu negocio' : 'Función de Premium'}
+            </p>
+          </div>
+        </div>
+
+        {plan === 'premium' ? (
+          <>
+            {cargandoAnalisis && <p className="mt-4 text-[13px] text-[var(--text-tertiary)]">Cargando…</p>}
+
+            {!cargandoAnalisis && analisis && (
+              <div className="mt-4 flex flex-col gap-4">
+                <p className="text-[13px] leading-relaxed text-[var(--text-primary)]">{analisis.resumen}</p>
+
+                {analisis.positivos.length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-semibold text-[var(--status-success)]">Lo que va bien</p>
+                    <ul className="mt-1.5 flex flex-col gap-1">
+                      {analisis.positivos.map((item, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-primary)]">
+                          <Check size={14} strokeWidth={3} className="mt-0.5 shrink-0 text-[var(--status-success)]" aria-hidden="true" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analisis.alertas.length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-semibold text-[var(--status-error)]">Alertas</p>
+                    <ul className="mt-1.5 flex flex-col gap-1">
+                      {analisis.alertas.map((item, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-primary)]">
+                          <AlertTriangle size={14} className="mt-0.5 shrink-0 text-[var(--status-error)]" aria-hidden="true" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analisis.recomendaciones.length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-semibold text-[var(--text-secondary)]">Recomendaciones</p>
+                    <ul className="mt-1.5 flex flex-col gap-1">
+                      {analisis.recomendaciones.map((item, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-primary)]">
+                          <ListChecks size={14} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analisis.proximos_pasos.length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-semibold text-[var(--text-secondary)]">Próximos pasos</p>
+                    <ul className="mt-1.5 flex flex-col gap-1">
+                      {analisis.proximos_pasos.map((item, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-[var(--text-primary)]">
+                          <ArrowRight size={14} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className="mt-4 text-[11px] text-[var(--text-tertiary)]">
+              {usadosEsteMes} de {limiteMes} análisis usados este mes
+            </p>
+            {errorAnalisis && <p className="mt-2 text-[12px] font-medium text-[var(--status-error)]">{errorAnalisis}</p>}
+            <button
+              type="button"
+              onClick={analizarNegocio}
+              disabled={analizando || cargandoAnalisis || usadosEsteMes >= limiteMes}
+              className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--accent)] text-[13px] font-semibold text-[var(--bg)] disabled:opacity-40"
+            >
+              <Sparkles size={15} aria-hidden="true" />
+              {analizando ? 'Analizando…' : analisis ? 'Analizar de nuevo' : 'Analizar mi negocio'}
             </button>
           </>
         ) : (

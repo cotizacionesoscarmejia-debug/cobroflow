@@ -189,6 +189,21 @@ export function cobradoEsteMesPorMoneda(db: DB): Record<string, number> {
   return totalesPorMoneda(items);
 }
 
+export function cobradoMesAnteriorPorMoneda(db: DB): Record<string, number> {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  const mesAnterior = d.toISOString().slice(0, 7);
+  const items = db.pagos
+    .filter((p) => p.fecha.slice(0, 7) === mesAnterior)
+    .map((p) => {
+      const proyecto = db.proyectos.find((pr) => pr.id === p.proyectoId);
+      const cliente = proyecto ? db.clientes.find((c) => c.id === proyecto.clienteId) : undefined;
+      return { moneda: cliente?.moneda ?? 'USD', monto: p.monto };
+    });
+  return totalesPorMoneda(items);
+}
+
 // ── Multimoneda: nunca sumar montos de monedas distintas — se agrupan por
 // código de moneda y, si hay tasa configurada, se ofrece un total consolidado
 // aparte (nunca oculto: siempre se puede ver el desglose real). ──

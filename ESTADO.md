@@ -113,9 +113,29 @@ que el usuario descargue un reporte real desde su cuenta Premium (que ya tiene l
 prueba) para la verificación visual final — el agente no tiene sesión propia para probarlo en vivo.
 Commit: `6e7674b`.
 
-**Próximas fases (NO empezar sin que el usuario confirme la Fase 4):**
-Fase 5 IA Premium (Claude/Anthropic, el usuario debe crear cuenta en console.anthropic.com y
-poner `ANTHROPIC_API_KEY` en Vercel cuando llegue esa fase) → Fase 6 onboarding guiado.
+**Fase 5 — IA Premium (Claude/Anthropic): CÓDIGO HECHO, falta migración SQL + variable de entorno.**
+- `lib/ai-negocio.ts`: agrega el resumen del negocio (por moneda + consolidado si hay tasa) —
+  misma regla de multimoneda de las Fases 1 y 4, nunca suma monedas distintas.
+- `app/api/ai/analizar-negocio/route.ts` (GET = último análisis + cuántos van este mes; POST =
+  genera uno nuevo): verifica `plan === 'premium'` EN EL SERVIDOR (nunca confía en el cliente),
+  tope de 10 análisis/mes por usuario, llama a Claude (`AI_MODEL` env var, default
+  `claude-sonnet-4-6`) con salida forzada por tool use (`reportar_analisis`) + validación con zod
+  + reintento que reinyecta el error si no valida — patrón exacto de `30-INTEGRACION-IA.md`. A
+  Claude SOLO le llega el JSON ya calculado (nunca clientes/proyectos crudos). Guarda cada
+  análisis en `ai_analysis` (log inmutable + caché del último).
+- Botón "Analizar mi negocio" en Cuenta (mismo patrón que el PDF de la Fase 4): Premium ve el
+  último análisis guardado al entrar + puede regenerar; Free/Pro ven upsell.
+- `tsc`/`build` limpios (23 rutas, incluye `/api/ai/analizar-negocio`).
+- ⚠️ **PENDIENTE — dos cosas antes de que funcione en producción:**
+  1. Aplicar la migración `web/supabase/migrations/20260817000000_ai_analysis.sql` (crea la tabla
+     `ai_analysis` con RLS) en el proyecto real de Supabase (`lacvctwsgkehemhdhqvx`). El agente
+     intentó hacerlo por el navegador automatizado pero la sesión de Supabase ya no estaba
+     logueada ahí — se le pidió al usuario que la aplique él mismo o inicie sesión para que el
+     agente la corra.
+  2. El usuario debe crear su cuenta en console.anthropic.com y poner `ANTHROPIC_API_KEY` en las
+     variables de entorno de Vercel — el agente nunca maneja esa clave.
+
+**Fase 6 (después de la 5):** onboarding guiado.
 
 ⏸️ CHECKPOINT — Sesión 6: "no encuentro cómo iniciar sesión, siempre me manda a crear cuenta
 gratis" — RESUELTO. La landing ya tenía un enlace "Entrar" en la esquina superior derecha
