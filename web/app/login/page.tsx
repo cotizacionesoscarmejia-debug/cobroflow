@@ -81,12 +81,12 @@ function LoginForm() {
 
       <div className="mt-10">
         <h1 className="text-balance text-[26px] font-bold leading-[1.15] text-[var(--text-primary)] [font-family:var(--font-display)]">
-          Crea tu cuenta gratis
+          {estado.primerCliente ? 'Crea tu cuenta gratis' : 'Inicia sesión en CobroFlow'}
         </h1>
         <p className="mt-2 text-[14px] text-[var(--text-secondary)]">
           {estado.primerCliente
             ? `Para guardar a ${estado.primerCliente.nombre} y no perder tu saldo calculado.`
-            : 'Para guardar tus clientes y no perder tu progreso.'}
+            : 'Escribe tu correo y te mandamos un enlace para entrar. Si no tienes cuenta todavía, la creamos al instante.'}
           {nombrePlan && ` Elegiste el plan ${nombrePlan}.`}
         </p>
 

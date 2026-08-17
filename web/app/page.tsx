@@ -26,6 +26,7 @@ export default function LandingPage() {
         appName="CobroFlow"
         logo={<img src="/logo.png" alt="" aria-hidden="true" className="size-7 object-contain" />}
         loginHref="/login"
+        loginLabel="Iniciar sesión"
         h1Marked="Cobra lo que te deben. [acento]Controla lo que ganas[/acento]."
         subtitleMarked="CobroFlow te muestra cuánto has cobrado, cuánto te deben y qué clientes necesitan seguimiento."
         ctaLabel={CTA_LABEL}
