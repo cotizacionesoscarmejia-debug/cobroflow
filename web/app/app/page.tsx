@@ -1,330 +1,424 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { Plus, TrendingUp, ChevronRight, Check, ArrowRightLeft } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { DollarSign, Clock, AlertTriangle, ChevronRight, MessageCircle, Info } from 'lucide-react';
 import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
-import { RecorridoGuiado } from '@/components/app/RecorridoGuiado';
+import { BloqueoPlan } from '@/components/app/BloqueoPlan';
+import { useAppData } from '@/components/app/AppDataProvider';
 import {
-  obtenerDB,
   proyectosConDatos,
   cobradoEsteMesPorMoneda,
+  cobradoMesAnteriorPorMoneda,
+  cobradoEsteAnioPorMoneda,
+  serieCobrosDelMes,
   diasAtraso,
   totalesPorMoneda,
   totalConsolidado,
-  obtenerPerfilMoneda,
-  obtenerTasas,
-  obtenerPerfil,
   nombreParaMostrar,
-  inicialesParaMostrar,
   type ProyectoConDatos,
-  type TasaCambio,
 } from '@/lib/app-data';
+import { capacidadesDe } from '@/lib/planes';
 import { simboloMoneda } from '@/lib/onboarding';
 
-const MotionLink = motion.create(Link);
 const ORDEN_URGENCIA: Record<string, number> = { atrasado: 0, vence_hoy: 1, proximo: 2, al_dia: 3, pagado: 4 };
 
 const entra = (i: number) => ({
   initial: { opacity: 0, y: 14 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const, delay: i * 0.07 },
+  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const, delay: i * 0.06 },
 });
+
+function monto(moneda: string, valor: number): string {
+  return `${moneda} ${simboloMoneda(moneda)}${Math.round(valor).toLocaleString('es')}`;
+}
+
+function calcularComparacion(actual: number, anterior: number): { texto: string; positivo: boolean } | null {
+  if (anterior <= 0) return null;
+  const cambio = Math.round(((actual - anterior) / anterior) * 100);
+  if (cambio === 0) return null;
+  return {
+    texto: `${cambio > 0 ? '↗' : '↘'} ${Math.abs(cambio)}% ${cambio > 0 ? 'más' : 'menos'} que el mes pasado`,
+    positivo: cambio > 0,
+  };
+}
 
 function SkeletonDashboard() {
   return (
-    <div className="mx-auto w-full max-w-[480px] animate-pulse px-5 pt-6">
-      <div className="flex items-center justify-between">
-        <div className="h-10 w-36 rounded-[var(--radius-button)] bg-[var(--surface-2)]" />
-        <div className="size-11 rounded-full bg-[var(--surface-2)]" />
+    <div className="mx-auto w-full max-w-[480px] animate-pulse px-5 pt-6 md:max-w-none md:px-8 md:pt-6">
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="h-28 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
+        <div className="h-28 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
+        <div className="h-28 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
       </div>
-      <div className="mt-6 h-32 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <div className="h-24 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
-        <div className="h-24 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
-      </div>
-      <div className="mt-3 h-20 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
-      <div className="mt-8 h-16 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
+      <div className="mt-4 h-64 rounded-[var(--radius-card)] bg-[var(--surface-2)]" />
     </div>
   );
 }
 
-/** Un solo número grande si hay 1 moneda; una lista compacta si hay varias — nunca las suma. */
-function MontoHero({ totales }: { totales: Record<string, number> }) {
-  const entradas = Object.entries(totales);
-  if (entradas.length <= 1) {
-    const [moneda, monto] = entradas[0] ?? ['USD', 0];
-    return (
-      <p className="mt-1 text-[38px] font-bold leading-none tabular-nums [font-family:var(--font-display)]">
-        <NumeroAnimado valor={monto} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
-      </p>
-    );
-  }
-  return (
-    <div className="mt-2 flex flex-col gap-1">
-      {entradas.map(([moneda, monto]) => (
-        <p key={moneda} className="text-[22px] font-bold leading-none tabular-nums [font-family:var(--font-display)]">
-          <NumeroAnimado valor={monto} prefijo={`${moneda} ${simboloMoneda(moneda)}`} />
-        </p>
-      ))}
-    </div>
-  );
-}
-
-/** Versión compacta del mismo patrón para las cards de la grilla (Por cobrar / Atrasado / Próximos). */
-function MontoCompacto({ totales, tono }: { totales: Record<string, number>; tono?: 'error' }) {
-  const entradas = Object.entries(totales);
-  const color = tono === 'error' && entradas.some(([, m]) => m > 0) ? 'var(--status-error)' : 'var(--text-primary)';
-  if (entradas.length === 0) {
-    return (
-      <p className="mt-1 text-[22px] font-bold tabular-nums [font-family:var(--font-display)]" style={{ color }}>
-        —
-      </p>
-    );
-  }
-  if (entradas.length === 1) {
-    const [moneda, monto] = entradas[0];
-    return (
-      <p className="mt-1 text-[22px] font-bold tabular-nums [font-family:var(--font-display)]" style={{ color }}>
-        {moneda} {simboloMoneda(moneda)}
-        {monto.toLocaleString('es')}
-      </p>
-    );
-  }
-  return (
-    <div className="mt-1 flex flex-col gap-0.5">
-      {entradas.map(([moneda, monto]) => (
-        <p key={moneda} className="text-[15px] font-bold tabular-nums [font-family:var(--font-display)]" style={{ color }}>
-          {moneda} {simboloMoneda(moneda)}
-          {monto.toLocaleString('es')}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-/** Total consolidado en la moneda principal — solo si hay tasa para cada moneda distinta; nunca lo inventa. */
-function BloqueConsolidado({
-  totales,
-  monedaPrincipal,
-  tasas,
+function TarjetaStat({
+  i,
+  icono: Icono,
+  tono,
+  titulo,
+  valor,
+  nota,
+  notaTono,
 }: {
-  totales: Record<string, number>;
-  monedaPrincipal: string;
-  tasas: TasaCambio[];
+  i: number;
+  icono: typeof DollarSign;
+  tono: 'accent' | 'accent-2' | 'error';
+  titulo: string;
+  valor: React.ReactNode;
+  nota?: string;
+  notaTono?: 'positivo' | 'negativo' | 'error' | 'neutro';
 }) {
-  const monedas = Object.keys(totales);
-  if (monedas.length <= 1) return null;
-  const { total, faltantes } = totalConsolidado(totales, monedaPrincipal, tasas);
+  const color = tono === 'accent' ? 'var(--accent)' : tono === 'accent-2' ? 'var(--accent-2)' : 'var(--status-error)';
+  const bgSuave = tono === 'accent' ? 'var(--status-success-soft)' : tono === 'accent-2' ? 'var(--chip-bg)' : 'var(--status-error-soft)';
+  const notaColor =
+    notaTono === 'error' ? 'var(--status-error)' : notaTono === 'negativo' ? 'var(--text-secondary)' : 'var(--status-success)';
   return (
-    <motion.div {...entra(2.5)} className="mt-3 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--accent)_25%,transparent)] bg-[color-mix(in_oklab,var(--accent)_6%,transparent)] p-4">
-      <div className="flex items-center gap-2">
-        <ArrowRightLeft size={14} color="var(--accent)" aria-hidden="true" />
-        <p className="text-[12px] font-semibold text-[var(--accent)]">Valor consolidado</p>
+    <motion.div
+      {...entra(i)}
+      className="relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)] p-5 shadow-[var(--shadow-1)]"
+      style={{ borderTop: `3px solid ${color}` }}
+    >
+      <div className="flex items-center gap-3">
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: bgSuave }}>
+          <Icono size={18} color={color} aria-hidden="true" />
+        </span>
+        <p className="text-[13px] font-medium text-[var(--text-secondary)]">{titulo}</p>
       </div>
-      {faltantes.length === 0 ? (
-        <>
-          <p className="mt-1 text-[24px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-            {monedaPrincipal} {simboloMoneda(monedaPrincipal)}
-            {total.toLocaleString('es')}
-          </p>
-          <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
-            Conversión calculada con las tasas configuradas en tu cuenta.
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)]">
-            No se puede calcular el total consolidado porque falta configurar el tipo de cambio{' '}
-            {faltantes.map((m) => `${m} → ${monedaPrincipal}`).join(', ')}.
-          </p>
-          <Link href="/app/cuenta/monedas" className="mt-2 inline-block text-[13px] font-semibold text-[var(--accent)]">
-            Configurar tipo de cambio
-          </Link>
-        </>
+      <div className="mt-3 text-[26px] font-bold leading-none tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
+        {valor}
+      </div>
+      {nota && (
+        <p className="mt-2 text-[12px] font-medium" style={{ color: notaColor }}>
+          {nota}
+        </p>
       )}
     </motion.div>
   );
 }
 
 export default function DashboardPage() {
-  const [proyectos, setProyectos] = useState<ProyectoConDatos[] | null>(null);
-  const [cobradoPorMoneda, setCobradoPorMoneda] = useState<Record<string, number>>({});
-  const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
-  const [tasas, setTasas] = useState<TasaCambio[]>([]);
-  const [perfil, setPerfil] = useState({ email: '', nombre: '', apellido: '' });
+  const { db, plan, monedaPrincipal, tasas, perfil, cargando } = useAppData();
+  const capacidades = capacidadesDe(plan);
 
-  useEffect(() => {
-    Promise.all([obtenerDB(), obtenerPerfilMoneda(), obtenerTasas(), obtenerPerfil()]).then(
-      ([db, perfilMoneda, tasasData, perfilUsuario]) => {
-        setProyectos(proyectosConDatos(db));
-        setCobradoPorMoneda(cobradoEsteMesPorMoneda(db));
-        setMonedaPrincipal(perfilMoneda.monedaPrincipal);
-        setTasas(tasasData);
-        setPerfil(perfilUsuario);
-      }
-    );
-  }, []);
-
-  if (!proyectos) return <SkeletonDashboard />;
+  if (cargando) return <SkeletonDashboard />;
 
   const nombreUsuario = nombreParaMostrar(perfil);
-  const iniciales = inicialesParaMostrar(perfil);
+  const proyectos = proyectosConDatos(db);
+  const cobradoPorMoneda = cobradoEsteMesPorMoneda(db);
+  const cobradoAnteriorPorMoneda = cobradoMesAnteriorPorMoneda(db);
+  const cobradoAnioPorMoneda = cobradoEsteAnioPorMoneda(db);
 
   const pendientes = proyectos.filter((p) => p.saldo > 0);
   const pendientePorMoneda = totalesPorMoneda(pendientes.map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo })));
-  const atrasadoPorMoneda = totalesPorMoneda(
-    pendientes.filter((p) => p.estado === 'atrasado').map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo }))
-  );
-  const proximosPorMoneda = totalesPorMoneda(
-    pendientes
-      .filter((p) => p.estado === 'proximo' || p.estado === 'vence_hoy')
-      .map((p) => ({ moneda: p.cliente.moneda, monto: p.saldo }))
-  );
-  const necesitanAtencion = [...pendientes].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]).slice(0, 4);
+  const atrasados = pendientes.filter((p) => p.estado === 'atrasado');
+  const clientesAtrasados = new Set(atrasados.map((p) => p.cliente.id)).size;
+  const proximos = pendientes
+    .filter((p) => p.estado === 'proximo' || p.estado === 'vence_hoy')
+    .sort((a, b) => a.fechaPromesa.localeCompare(b.fechaPromesa));
+
+  const seguimientoHoy = [...pendientes].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]).slice(0, 6);
+
+  const monedasCobradas = Object.keys(cobradoPorMoneda);
+  const comparacionMes =
+    monedasCobradas.length === 1 ? calcularComparacion(cobradoPorMoneda[monedasCobradas[0]] ?? 0, cobradoAnteriorPorMoneda[monedasCobradas[0]] ?? 0) : null;
+
+  const cCobradoAnio = totalConsolidado(cobradoAnioPorMoneda, monedaPrincipal, tasas);
+  const cPendiente = totalConsolidado(pendientePorMoneda, monedaPrincipal, tasas);
+
+  const serieMes = serieCobrosDelMes(db, monedaPrincipal);
 
   return (
-    <div className="relative overflow-hidden">
-      <RecorridoGuiado />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px]"
-        style={{
-          background:
-            'radial-gradient(560px 360px at 20% 0%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 60%)',
-        }}
-      />
-      <div className="mx-auto w-full max-w-[480px] px-5 pt-6">
-        <motion.div {...entra(0)} className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] text-[var(--text-secondary)]">Buenos días</p>
-            <h1 className="truncate text-[20px] font-bold capitalize text-[var(--text-primary)] [font-family:var(--font-display)]">
-              {nombreUsuario || 'tu negocio'}
-            </h1>
-          </div>
-          <MotionLink
-            href="/app/cuenta"
-            aria-label="Ir a mi cuenta"
-            whileTap={{ scale: 0.92 }}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)] text-[15px] font-bold text-[var(--accent)]"
-          >
-            {iniciales}
-          </MotionLink>
-        </motion.div>
+    <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10 md:max-w-none md:px-8 md:pb-12">
+      {/* Saludo — solo en móvil (el AppShell ya lo muestra en la barra superior de desktop/tablet) */}
+      <motion.div {...entra(0)} className="md:hidden">
+        <p className="text-[13px] text-[var(--text-secondary)]">Hola</p>
+        <h1 className="truncate text-[20px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">
+          {nombreUsuario ? `${nombreUsuario.split(' ')[0]} 👋` : 'tu negocio'}
+        </h1>
+      </motion.div>
 
-        <motion.div
-          {...entra(1)}
-          className="relative mt-6 overflow-hidden rounded-[var(--radius-card)] bg-gradient-to-br from-[var(--accent)] to-[color-mix(in_oklab,var(--accent)_78%,black)] p-6 text-[var(--bg)] shadow-[var(--shadow-2)]"
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-8 -top-8 size-36 rounded-full"
-            style={{ background: 'color-mix(in oklab, white 10%, transparent)' }}
-          />
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-4 left-1.5 w-[3px] rounded-full"
-            style={{ backgroundImage: 'repeating-linear-gradient(180deg, color-mix(in oklab, white 55%, transparent) 0 8px, transparent 8px 16px)' }}
-          />
-          <p className="text-[13px] opacity-85">Cobrado este mes</p>
-          <MontoHero totales={cobradoPorMoneda} />
-          <p className="mt-2 flex items-center gap-1.5 text-[12.5px] opacity-90">
-            <TrendingUp size={14} aria-hidden="true" />
-            Se actualiza cada vez que registras un pago
-          </p>
-        </motion.div>
-
-        <motion.div {...entra(2)} className="mt-3 grid grid-cols-2 gap-3">
-          <div className="rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
-            <p className="text-[12px] text-[var(--text-secondary)]">Por cobrar</p>
-            <MontoCompacto totales={pendientePorMoneda} />
-          </div>
-          <div className="rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
-            <p className="text-[12px] text-[var(--text-secondary)]">Atrasado</p>
-            <MontoCompacto totales={atrasadoPorMoneda} tono="error" />
-          </div>
-        </motion.div>
-
-        <motion.div {...entra(3)} className="mt-3 rounded-[var(--radius-card)] bg-[var(--surface-2)] p-4">
-          <p className="text-[12px] text-[var(--text-secondary)]">Próximos 30 días</p>
-          <MontoCompacto totales={proximosPorMoneda} />
-        </motion.div>
-
-        <BloqueConsolidado totales={pendientePorMoneda} monedaPrincipal={monedaPrincipal} tasas={tasas} />
-
-        <motion.div {...entra(4)} className="mt-8 flex items-center justify-between">
-          <h2 className="text-[16px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">
-            Necesitan tu atención
-          </h2>
-          {necesitanAtencion.length > 0 && (
-            <span className="text-[12px] font-semibold text-[var(--text-secondary)]">{necesitanAtencion.length}</span>
-          )}
-        </motion.div>
-
-        {necesitanAtencion.length === 0 ? (
-          <motion.div
-            {...entra(5)}
-            className="mt-4 flex flex-col items-center rounded-[var(--radius-card)] border border-dashed border-[color-mix(in_oklab,var(--text-tertiary)_35%,transparent)] p-6 text-center"
-          >
-            <motion.span
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1], delay: 0.15 }}
-              className="flex size-12 items-center justify-center rounded-full bg-[var(--status-success-soft)]"
-            >
-              <Check size={22} strokeWidth={3} color="var(--status-success)" aria-hidden="true" />
-            </motion.span>
-            <p className="mt-3 text-[14px] font-semibold text-[var(--text-primary)]">Todo cobrado</p>
-            <p className="mt-1 text-[13px] text-[var(--text-secondary)]">No tienes pagos pendientes ahora mismo.</p>
-          </motion.div>
-        ) : (
-          <div className="mt-4 flex flex-col gap-3">
-            {necesitanAtencion.map((p, i) => (
-              <MotionLink
-                key={p.id}
-                href={`/app/clientes/${p.cliente.id}`}
-                {...entra(5 + i)}
-                whileTap={{ scale: 0.97 }}
-                className="relative flex items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]"
-              >
-                <Perforacion tono={p.estado === 'atrasado' ? 'accent' : 'neutro'} />
-                <span
-                  aria-hidden="true"
-                  className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-[var(--chip-bg)] text-[13px] font-bold text-[var(--accent)]"
-                >
-                  {p.cliente.nombre.slice(0, 2).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{p.cliente.nombre}</p>
-                  <p className="truncate text-[12px] text-[var(--text-secondary)]">{p.nombre}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[14px] font-bold tabular-nums text-[var(--text-primary)]">
-                    {p.cliente.moneda} {simboloMoneda(p.cliente.moneda)}
-                    {p.saldo.toLocaleString('es')}
-                  </p>
-                  <div className="mt-1">
-                    <EstadoBadge estado={p.estado} dias={diasAtraso(p)} />
-                  </div>
-                </div>
-                <ChevronRight size={16} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true" />
-              </MotionLink>
-            ))}
-          </div>
-        )}
+      {/* ── 3 tarjetas principales ── */}
+      <div className="mt-5 grid grid-cols-1 gap-3 md:mt-0 md:grid-cols-3">
+        <TarjetaStat
+          i={1}
+          icono={DollarSign}
+          tono="accent"
+          titulo="Cobrado este mes"
+          valor={
+            monedasCobradas.length <= 1 ? (
+              <NumeroAnimado valor={cobradoPorMoneda[monedasCobradas[0]] ?? 0} prefijo={`${monedasCobradas[0] ?? monedaPrincipal} ${simboloMoneda(monedasCobradas[0] ?? monedaPrincipal)}`} />
+            ) : (
+              <span className="text-[16px] leading-tight">
+                {monedasCobradas.map((m) => (
+                  <span key={m} className="block">
+                    {monto(m, cobradoPorMoneda[m])}
+                  </span>
+                ))}
+              </span>
+            )
+          }
+          nota={comparacionMes?.texto}
+          notaTono={comparacionMes?.positivo ? 'positivo' : 'negativo'}
+        />
+        <TarjetaStat
+          i={2}
+          icono={Clock}
+          tono="accent-2"
+          titulo="Pendiente por cobrar"
+          valor={
+            Object.keys(pendientePorMoneda).length <= 1 ? (
+              <NumeroAnimado valor={Object.values(pendientePorMoneda)[0] ?? 0} prefijo={`${Object.keys(pendientePorMoneda)[0] ?? monedaPrincipal} ${simboloMoneda(Object.keys(pendientePorMoneda)[0] ?? monedaPrincipal)}`} />
+            ) : (
+              <span className="text-[16px] leading-tight">
+                {Object.entries(pendientePorMoneda).map(([m, v]) => (
+                  <span key={m} className="block">
+                    {monto(m, v)}
+                  </span>
+                ))}
+              </span>
+            )
+          }
+        />
+        <TarjetaStat
+          i={3}
+          icono={AlertTriangle}
+          tono="error"
+          titulo="Clientes atrasados"
+          valor={clientesAtrasados}
+          nota={clientesAtrasados > 0 ? 'Requieren tu atención' : undefined}
+          notaTono="error"
+        />
       </div>
 
-      <MotionLink
-        href="/app/clientes/nuevo"
-        aria-label="Agregar cliente"
-        whileTap={{ scale: 0.92 }}
-        className="fixed bottom-24 right-5 z-30 flex size-14 items-center justify-center rounded-full bg-[var(--accent)] shadow-[var(--shadow-2)]"
-      >
-        <Plus size={24} color="var(--bg)" aria-hidden="true" />
-      </MotionLink>
+      {/* ── Columnas: seguimiento+gráfica (ancha) / próximos+resumen (angosta) ── */}
+      <div className="mt-6 grid grid-cols-1 gap-5 md:mt-6 md:grid-cols-[1.7fr_1fr] md:items-start">
+        <div className="flex flex-col gap-5">
+          {/* Seguimiento de hoy */}
+          <motion.section {...entra(4)} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[16px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">Seguimiento de hoy</h2>
+                {pendientes.length > 0 && (
+                  <span className="rounded-full bg-[var(--chip-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--accent)]">
+                    {pendientes.length} pendiente{pendientes.length === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+              {pendientes.length > 0 && (
+                <Link href="/app/cobros" className="text-[12.5px] font-semibold text-[var(--accent)]">
+                  Ver todos
+                </Link>
+              )}
+            </div>
+
+            {seguimientoHoy.length === 0 ? (
+              <div className="mt-4 flex flex-col items-center rounded-[var(--radius-button)] border border-dashed border-[color-mix(in_oklab,var(--text-tertiary)_35%,transparent)] py-8 text-center">
+                <p className="text-[14px] font-semibold text-[var(--text-primary)]">Todo cobrado 🎉</p>
+                <p className="mt-1 text-[12.5px] text-[var(--text-secondary)]">No tienes pagos pendientes ahora mismo.</p>
+              </div>
+            ) : (
+              <>
+                {/* Tabla — desktop/tablet */}
+                <div className="mt-4 hidden overflow-x-auto md:block">
+                  <table className="w-full border-collapse text-left text-[13px]">
+                    <thead>
+                      <tr className="text-[12px] text-[var(--text-tertiary)]">
+                        <th className="pb-2 font-medium">Cliente</th>
+                        <th className="pb-2 font-medium">Proyecto</th>
+                        <th className="pb-2 font-medium">Vence</th>
+                        <th className="pb-2 font-medium">Monto</th>
+                        <th className="pb-2 font-medium">Estado</th>
+                        <th className="pb-2 font-medium">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seguimientoHoy.map((p) => (
+                        <tr key={p.id} className="border-t border-[color-mix(in_oklab,var(--text-tertiary)_14%,transparent)]">
+                          <td className="py-2.5 pr-3">
+                            <Link href={`/app/clientes/${p.cliente.id}`} className="flex items-center gap-2.5">
+                              <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)] text-[11px] font-bold text-[var(--accent)]">
+                                {p.cliente.nombre.slice(0, 2).toUpperCase()}
+                              </span>
+                              <span className="font-medium text-[var(--text-primary)]">{p.cliente.nombre}</span>
+                            </Link>
+                          </td>
+                          <td className="py-2.5 pr-3 text-[var(--text-secondary)]">{p.nombre}</td>
+                          <td className="py-2.5 pr-3 text-[var(--text-secondary)]">
+                            {new Date(p.fechaPromesa).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                          </td>
+                          <td className="py-2.5 pr-3 font-semibold tabular-nums text-[var(--text-primary)]">{monto(p.cliente.moneda, p.saldo)}</td>
+                          <td className="py-2.5 pr-3">
+                            <EstadoBadge estado={p.estado} dias={diasAtraso(p)} />
+                          </td>
+                          <td className="py-2.5">
+                            <Link
+                              href="/app/recordatorios"
+                              className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] px-3 text-[12px] font-semibold text-[var(--accent)]"
+                            >
+                              <MessageCircle size={12} aria-hidden="true" />
+                              Recordar
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Cards — móvil */}
+                <div className="mt-4 flex flex-col gap-2.5 md:hidden">
+                  {seguimientoHoy.map((p) => (
+                    <div key={p.id} className="relative overflow-hidden rounded-[var(--radius-button)] bg-[var(--surface-2)] p-3.5">
+                      <Perforacion tono={p.estado === 'atrasado' ? 'accent' : 'neutro'} />
+                      <div className="flex items-start justify-between gap-2">
+                        <Link href={`/app/clientes/${p.cliente.id}`} className="min-w-0">
+                          <p className="truncate text-[13.5px] font-semibold text-[var(--text-primary)]">{p.cliente.nombre}</p>
+                          <p className="truncate text-[12px] text-[var(--text-secondary)]">{p.nombre}</p>
+                        </Link>
+                        <EstadoBadge estado={p.estado} dias={diasAtraso(p)} />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-[12px] text-[var(--text-secondary)]">
+                          Vence {new Date(p.fechaPromesa).toLocaleDateString('es', { day: 'numeric', month: 'short' })} · {monto(p.cliente.moneda, p.saldo)}
+                        </p>
+                        <Link href="/app/recordatorios" className="flex h-8 items-center gap-1 rounded-[var(--radius-button)] bg-[var(--accent)] px-3 text-[11.5px] font-semibold text-[var(--bg)]">
+                          <MessageCircle size={11} aria-hidden="true" />
+                          Recordar
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </motion.section>
+
+          {/* Cobros del mes — gráfica, Pro+ */}
+          <motion.section {...entra(5)} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-[16px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">Cobros del mes</h2>
+              <Info size={13} className="text-[var(--text-tertiary)]" aria-hidden="true" />
+            </div>
+            {capacidades.canUseCharts ? (
+              <>
+                <p className="mt-3 text-[24px] font-bold tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
+                  {monto(monedaPrincipal, cobradoPorMoneda[monedaPrincipal] ?? 0)}
+                </p>
+                <p className="text-[12px] text-[var(--text-secondary)]">Total cobrado en {monedaPrincipal}</p>
+                <div className="mt-3 h-[180px] w-full">
+                  {serieMes.length > 1 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={serieMes} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
+                        <defs>
+                          <linearGradient id="cobrosGradiente" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
+                            <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="dia" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={44} />
+                        <Tooltip
+                          formatter={(v) => monto(monedaPrincipal, Number(v))}
+                          labelFormatter={(d) => `Día ${d}`}
+                          contentStyle={{ borderRadius: 12, border: 'none', boxShadow: 'var(--shadow-2)', fontSize: 12 }}
+                        />
+                        <Area type="monotone" dataKey="acumulado" stroke="var(--accent)" strokeWidth={2.5} fill="url(#cobrosGradiente)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-[12.5px] text-[var(--text-tertiary)]">
+                      Aparecerá aquí cuando registres pagos este mes.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="mt-3">
+                <BloqueoPlan
+                  plan="pro"
+                  titulo="Desbloquea tus estadísticas"
+                  descripcion="Visualiza cómo evolucionan tus cobros mes a mes con una gráfica clara."
+                  email={perfil.email}
+                />
+              </div>
+            )}
+          </motion.section>
+        </div>
+
+        <div className="flex flex-col gap-5">
+          {/* Próximos cobros */}
+          <motion.section {...entra(4.5)} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+            <h2 className="text-[16px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">Próximos cobros</h2>
+            {proximos.length === 0 ? (
+              <p className="mt-3 text-[12.5px] text-[var(--text-secondary)]">No tienes cobros por vencer pronto.</p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-3">
+                {proximos.slice(0, 4).map((p) => (
+                  <Link key={p.id} href={`/app/clientes/${p.cliente.id}`} className="flex items-center gap-2.5">
+                    <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)] text-[11.5px] font-bold text-[var(--accent)]">
+                      {p.cliente.nombre.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{p.cliente.nombre}</p>
+                      <p className="truncate text-[11.5px] text-[var(--text-secondary)]">{p.nombre}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[11.5px] text-[var(--text-secondary)]">
+                        {new Date(p.fechaPromesa).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className="text-[12.5px] font-bold tabular-nums text-[var(--text-primary)]">{monto(p.cliente.moneda, p.saldo)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <Link href="/app/cobros" className="mt-4 flex items-center justify-between text-[12.5px] font-semibold text-[var(--accent)]">
+              Ver todos los próximos cobros
+              <ChevronRight size={14} aria-hidden="true" />
+            </Link>
+          </motion.section>
+
+          {/* Resumen rápido */}
+          <motion.section {...entra(5.5)} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+            <h2 className="text-[16px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">Resumen rápido</h2>
+            <div className="mt-3 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[13px] text-[var(--text-secondary)]">
+                  <DollarSign size={14} className="text-[var(--accent)]" aria-hidden="true" />
+                  Total cobrado (año)
+                </span>
+                <span className="text-[13.5px] font-bold tabular-nums text-[var(--text-primary)]">
+                  {cCobradoAnio.faltantes.length === 0 ? monto(monedaPrincipal, cCobradoAnio.total) : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[13px] text-[var(--text-secondary)]">
+                  <Clock size={14} className="text-[var(--accent-2)]" aria-hidden="true" />
+                  Pendiente por cobrar
+                </span>
+                <span className="text-[13.5px] font-bold tabular-nums text-[var(--text-primary)]">
+                  {cPendiente.faltantes.length === 0 ? monto(monedaPrincipal, cPendiente.total) : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[13px] text-[var(--text-secondary)]">
+                  <AlertTriangle size={14} className="text-[var(--status-error)]" aria-hidden="true" />
+                  Clientes atrasados
+                </span>
+                <span className="text-[13.5px] font-bold tabular-nums text-[var(--text-primary)]">{clientesAtrasados}</span>
+              </div>
+            </div>
+          </motion.section>
+        </div>
+      </div>
     </div>
   );
 }

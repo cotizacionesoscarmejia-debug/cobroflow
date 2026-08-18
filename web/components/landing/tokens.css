@@ -55,6 +55,17 @@
 
   /* ── DERIVADOS (no se tocan: se recalculan solos desde --accent) ── */
   --chip-bg: color-mix(in oklab, var(--accent) 10%, transparent);
+
+  /* ── SIDEBAR (rediseño SaaS, referencia visual del usuario 2026-08-17) ──
+     --sidebar-bg se deriva del propio --accent oscurecido con negro (misma
+     familia de verde, nunca un hex nuevo sin relación) — si --accent cambia,
+     el sidebar cambia de tono automáticamente con él. */
+  --sidebar-bg: color-mix(in oklab, var(--accent) 55%, black);
+  --sidebar-bg-active: color-mix(in oklab, white 14%, var(--sidebar-bg));
+  --sidebar-bg-hover: color-mix(in oklab, white 7%, var(--sidebar-bg));
+  --sidebar-border: color-mix(in oklab, white 12%, var(--sidebar-bg));
+  --sidebar-text: #eef3ee;
+  --sidebar-text-muted: color-mix(in oklab, white 58%, var(--sidebar-bg));
 }
 
 /* ============================================================================

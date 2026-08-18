@@ -1,32 +1,25 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion, CheckCustom } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
-import { obtenerDB, proyectosConDatos, diasAtraso, registrarPago, type ProyectoConDatos } from '@/lib/app-data';
+import { useAppData } from '@/components/app/AppDataProvider';
+import { proyectosConDatos, diasAtraso, registrarPago } from '@/lib/app-data';
 import { simboloMoneda } from '@/lib/onboarding';
 
 export default function ClienteDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const [proyectos, setProyectos] = useState<ProyectoConDatos[] | null>(null);
+  const { db, cargando, recargar } = useAppData();
   const [registrando, setRegistrando] = useState<string | null>(null);
   const [monto, setMonto] = useState('');
 
-  async function recargar() {
-    const db = await obtenerDB();
-    setProyectos(proyectosConDatos(db).filter((p) => p.cliente.id === id));
-  }
+  const proyectos = useMemo(() => proyectosConDatos(db).filter((p) => p.cliente.id === id), [db, id]);
 
-  useEffect(() => {
-    recargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  if (!proyectos) return null;
+  if (cargando) return null;
   if (proyectos.length === 0) {
     return (
       <div className="mx-auto w-full max-w-[480px] px-5 pt-6 text-center">

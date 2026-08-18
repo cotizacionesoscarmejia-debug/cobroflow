@@ -1,5 +1,99 @@
 # ESTADO — CobroFlow
-Última actualización: 2026-08-16 | Sesión actual: 6
+Última actualización: 2026-08-17 | Sesión actual: 6
+
+⏸️ CHECKPOINT — Sesión 6: REDISEÑO INTEGRAL de la app autenticada (a pedido del usuario, con
+imagen de referencia de un SaaS financiero — sidebar verde oscuro, tarjetas, tabla de
+seguimiento, gráfica). Reemplaza la navegación de 4 pestañas por 8 secciones: Panel principal,
+Centro de cobros, Clientes, Proyectos, Pagos, Estadísticas, Recordatorios, Configuración.
+**Backward-compatible: NINGUNA migración de base de datos, NINGÚN dato existente tocado.**
+Reutiliza el mismo esquema (`clients`/`projects`/`payments`/`profiles`) y toda la lógica de
+saldos/estados/planes ya construida en sesiones anteriores — es una reorganización de UX/UI, no
+una reconstrucción del backend.
+
+**Arquitectura nueva:**
+- `lib/planes.ts` — fuente única de verdad de qué puede hacer cada plan (`capacidadesDe(plan)`):
+  límites de clientes/proyectos, gráficas, multimoneda, export CSV/PDF, IA, plantillas de
+  recordatorio. El límite DURO real sigue viviendo en los triggers de Postgres (`valida_limite_free`)
+  — este archivo es la fuente de verdad del LADO DE LA INTERFAZ (qué mostrar/bloquear).
+- `components/app/AppDataProvider.tsx` — contexto compartido (`useAppData()`) que carga
+  DB/plan/perfil/tasas UNA vez y las comparte entre TODAS las pantallas (antes cada pantalla
+  pedía sus propios datos — duplicaba peticiones y arriesgaba cifras distintas entre pantallas).
+  Cualquier mutación llama a `recargar()` del contexto, nunca vuelve a pedir datos por su cuenta.
+  También controla el estado del recorrido guiado (`tourVisible`/`cerrarTour`/`reabrirTour`).
+- `components/app/AppShell.tsx` — sidebar verde oscuro persistente en escritorio/tablet (≥768px,
+  breakpoint `md` de Tailwind — no se construyó un tercer estado "colapsado" intermedio, decisión
+  consciente para no sobrecomplicar), barra superior con saludo real + buscador funcional
+  (`buscarEnDB`, busca clientes/proyectos/pagos de verdad) + accesos rápidos (recordatorios con
+  contador REAL de atrasados, no inventado), y navegación inferior en móvil (Inicio/Cobros/
+  Clientes/Pagos + hoja "Más" con Proyectos/Estadísticas/Recordatorios/Configuración).
+- `components/app/BloqueoPlan.tsx` — mecanismo de upsell elegante (`🔒 Disponible en Pro/Premium`
+  + CTA), reemplaza cualquier ocultamiento silencioso con CSS.
+- `components/app/RecorridoGuiado.tsx` — reescrito: bienvenida → 7 pasos (uno por sección clave,
+  el de Estadísticas cambia de texto según el plan) → cierre con CTA "Agregar mi primer cliente".
+  Se guarda en `profiles.tour_completado` (ya existía, Fase 6) y se puede reabrir desde
+  Configuración → Ayuda sin recargar la página (vive en el contexto compartido).
+- `lib/csv-export.ts` — exportación CSV 100% en el navegador (Blob), sin dependencias nuevas.
+  Gatilla por plan (Pro+) en Clientes/Proyectos/Pagos.
+- Paleta del sidebar (`components/landing/tokens.css`): `--sidebar-bg` se DERIVA de `--accent`
+  oscurecido con negro (`color-mix`) — nunca un hex nuevo sin relación; si `--accent` cambia, el
+  sidebar cambia con él. Resto de derivados (`--sidebar-bg-active/hover`, `--sidebar-text-muted`)
+  también son `color-mix`.
+
+**Pantallas nuevas:** `/app/proyectos` (+ `/nuevo`, requiere elegir cliente existente —
+`agregarProyecto()` nuevo en `app-data.ts`), `/app/pagos` (+ `/nuevo`, historial cruzando todos
+los clientes — `pagosConDatos()` nuevo), `/app/estadisticas` (Pro+: gráfica de barras últimos 6
+meses con `recharts`, clientes con mayor facturación, desglose por moneda; Premium: enlaces a la
+IA/PDF que ya existían en Cuenta — NO se duplicó ese código, solo se enlaza), `/app/recordatorios`
+(hereda el mensaje+WhatsApp que antes vivía en `/app/cobros`, suma plantillas de tono Pro+:
+Amigable/Formal/Directo).
+
+**Pantallas rediseñadas:** `/app` (Panel principal: 3 tarjetas con comparación real vs. mes
+anterior cuando hay datos, Seguimiento de hoy en tabla/tarjetas según pantalla, Próximos cobros,
+gráfica Cobros del mes con área degradada — Pro+, bloqueada con elegancia para Free — Resumen
+rápido). `/app/cobros` (Centro de Cobros: ahora es la tabla operativa filtrable —
+Todos/Pendientes/Parciales/Atrasados/Pagados, más filtro de moneda si aplica el plan — el envío
+de recordatorios se movió a `/app/recordatorios` para no duplicar esa lógica). `/app/cuenta`
+(recategorizado visualmente como "Configuración": Perfil/Preferencias/Plan/Reportes y
+análisis/Ayuda y aprendizaje/Cuenta — la URL se dejó igual a propósito, ya la usan el paywall y
+los enlaces de retorno de Hotmart). `/app/cuenta/monedas` (la sección de tasas de cambio ahora
+está bloqueada con elegancia para Free — antes estaba abierta a cualquier plan, era una
+inconsistencia real con la regla "varias monedas es Pro+").
+
+⚠️ **Cambio de negocio intencional**: la exportación a PDF (`Reporte financiero en PDF` en
+Configuración) pasó de ser Premium-exclusiva a **Pro+** — el usuario lo pidió explícitamente en
+el prompt de rediseño (objeto de capacidades: `canExportPDF: true` para Pro) y coincide con
+`18-VENTA-HOTMART`/`02C`. El análisis con IA se mantiene 100% Premium, sin cambios.
+
+**Verificado:** `tsc --noEmit` limpio, `npm run build` limpio (29 rutas), `npm run lint` sin
+errores NUEVOS atribuibles a este cambio (el proyecto ya tenía ~15 warnings/errores
+`react-hooks/set-state-in-effect` preexistentes en landing/onboarding/paywall/registro, ninguno
+tocado — están fuera de alcance de este rediseño, que es solo `/app/*`). Verificación visual: sin
+sesión real disponible (mismo límite de siempre), se armó una página temporal con datos de
+ejemplo, se verificó por screenshot + inspección de texto que el sidebar/topbar/tarjetas/tabla/
+gráfica/nav móvil renderizan correctamente a 1440px y 375px, y se borró esa página antes de
+cerrar. **Pendiente real: que el usuario lo vea con su cuenta real** (mismo límite de siempre —
+el agente no tiene credenciales para loguearse).
+
+**Decisiones de alcance (para no sobrecomplicar, rule 53 del propio prompt del usuario):**
+- NO se construyó "proyección de flujo" ni "metas mensuales" (Premium, punto 19) — son funciones
+  Premium mencionadas en el prompt pero que NUNCA existieron en CobroFlow; `canUseForecasting`/
+  `canUseGoals` quedan en `false` a propósito en `lib/planes.ts` con un comentario explicando por
+  qué (nunca mostrar una función que no existe de verdad).
+- NO se construyó un sistema de notificaciones real (push/campanita persistente) — el ícono de
+  campana del topbar muestra un contador REAL derivado de datos (clientes atrasados), no una
+  bandeja de notificaciones inventada, tal como pidió explícitamente el prompt ("si no existe un
+  sistema completo de notificaciones, no inventes infraestructura innecesaria").
+- El campo "Parcial" (pago parcial) que pedía el prompt no existía como estado — se calculó
+  puramente en la capa de presentación de Centro de Cobros/Recordatorios (`pagado>0 && saldo>0`),
+  sin tocar `estadoProyecto()` ni el tipo `EstadoCobro` que usan Dashboard y el resto de la app
+  (evita romper nada existente).
+- El sidebar tiene 2 estados responsive (oculto en móvil <768px, completo en ≥768px), no 3 — el
+  prompt pedía un tercer estado "colapsado" para tablet vertical que se decidió omitir por
+  tiempo/complejidad; anotado como pendiente abajo.
+- `logo.png` referenciado en `components/onboarding/ui.tsx` (`<Marca>`, pantallas de
+  onboarding/paywall/login) es un archivo que NO EXISTE en `public/` — bug preexistente,
+  detectado de pasada, no se tocó por estar fuera del alcance de este rediseño (que es solo
+  `/app/*`, no la landing/funnel).
 
 ⏸️ CHECKPOINT — Sesión 6: proyecto de mejoras finales (20 puntos pedidos por el usuario: PDF
 Premium, IA Premium, nombre en vez de correo, login con contraseña, onboarding guiado,

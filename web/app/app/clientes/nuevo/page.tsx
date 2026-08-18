@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronDown } from 'lucide-react';
 import { CtaFunnel } from '@/components/onboarding/ui';
 import { agregarClienteYProyecto } from '@/lib/app-data';
+import { useAppData } from '@/components/app/AppDataProvider';
 import { MONEDAS } from '@/lib/onboarding';
 
 function hoyISO(offsetDias = 0): string {
@@ -16,6 +17,7 @@ function hoyISO(offsetDias = 0): string {
 
 export default function NuevoClientePage() {
   const router = useRouter();
+  const { recargar } = useAppData();
   const [nombre, setNombre] = useState('');
   const [proyecto, setProyecto] = useState('');
   const [moneda, setMoneda] = useState<string>('USD');
@@ -56,6 +58,7 @@ export default function NuevoClientePage() {
           fechaPromesa: fecha,
         }
       );
+      await recargar();
       router.push('/app/clientes');
     } catch (e) {
       const mensaje = e instanceof Error ? e.message : '';

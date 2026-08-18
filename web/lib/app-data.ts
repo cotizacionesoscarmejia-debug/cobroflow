@@ -3,7 +3,7 @@
 // calculando en el cliente con matemática simple, nunca en SQL — regla del SO).
 
 import { createClient } from './supabase/client';
-import { leerEstado as leerOnboarding } from './onboarding';
+import { leerEstado as leerOnboarding, simboloMoneda } from './onboarding';
 
 export interface Cliente {
   id: string;
@@ -172,6 +172,95 @@ export async function registrarPago(_db: DB, proyectoId: string, monto: number):
   await supabase.from('payments').insert({ user_id: user.id, project_id: proyectoId, monto });
 }
 
+/** Agrega un proyecto a un cliente que YA existe (a diferencia de agregarClienteYProyecto). */
+export async function agregarProyecto(datos: {
+  clienteId: string;
+  nombre: string;
+  precioTotal: number;
+  anticipo: number;
+  fechaPromesa: string;
+}): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+
+  const { data: proyecto, error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: user.id,
+      client_id: datos.clienteId,
+      nombre: datos.nombre.trim() || 'Proyecto',
+      precio_total: datos.precioTotal,
+      fecha_promesa: datos.fechaPromesa,
+    })
+    .select('id')
+    .single();
+  if (error || !proyecto) throw error ?? new Error('no_se_pudo_crear_proyecto');
+
+  if (datos.anticipo > 0) {
+    await supabase.from('payments').insert({ user_id: user.id, project_id: proyecto.id, monto: datos.anticipo });
+  }
+}
+
+// ── Pagos y búsqueda globales — vistas derivadas para las nuevas secciones
+// Proyectos/Pagos y el buscador de la barra superior. ──
+
+export interface PagoConDatos extends Pago {
+  cliente: Cliente;
+  proyecto: Proyecto;
+}
+
+/** Todos los pagos del usuario, con su cliente y proyecto ya resueltos, más recientes primero. */
+export function pagosConDatos(db: DB): PagoConDatos[] {
+  return db.pagos
+    .map((pago) => {
+      const proyecto = db.proyectos.find((p) => p.id === pago.proyectoId);
+      const cliente = proyecto ? db.clientes.find((c) => c.id === proyecto.clienteId) : undefined;
+      if (!proyecto || !cliente) return null;
+      return { ...pago, proyecto, cliente };
+    })
+    .filter((p): p is PagoConDatos => p !== null)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+export interface ResultadoBusqueda {
+  tipo: 'cliente' | 'proyecto' | 'pago';
+  clienteId: string;
+  titulo: string;
+  subtitulo: string;
+}
+
+/** Busca clientes, proyectos y pagos por nombre/monto — el buscador de la barra superior. */
+export function buscarEnDB(db: DB, termino: string): ResultadoBusqueda[] {
+  const t = termino.trim().toLowerCase();
+  if (t.length < 2) return [];
+  const resultados: ResultadoBusqueda[] = [];
+
+  for (const c of db.clientes) {
+    if (c.nombre.toLowerCase().includes(t)) {
+      resultados.push({ tipo: 'cliente', clienteId: c.id, titulo: c.nombre, subtitulo: 'Cliente' });
+    }
+  }
+  for (const p of proyectosConDatos(db)) {
+    if (p.nombre.toLowerCase().includes(t)) {
+      resultados.push({ tipo: 'proyecto', clienteId: p.cliente.id, titulo: p.nombre, subtitulo: `Proyecto de ${p.cliente.nombre}` });
+    }
+  }
+  for (const g of pagosConDatos(db)) {
+    if (String(g.monto).includes(t) || g.proyecto.nombre.toLowerCase().includes(t)) {
+      resultados.push({
+        tipo: 'pago',
+        clienteId: g.cliente.id,
+        titulo: `${g.cliente.moneda} ${simboloMoneda(g.cliente.moneda)}${g.monto.toLocaleString('es')}`,
+        subtitulo: `Pago de ${g.cliente.nombre} · ${g.proyecto.nombre}`,
+      });
+    }
+  }
+  return resultados.slice(0, 20);
+}
+
 export function cobradoEsteMes(db: DB): number {
   const mesActual = hoyISO(0).slice(0, 7);
   return db.pagos.filter((p) => p.fecha.slice(0, 7) === mesActual).reduce((s, p) => s + p.monto, 0);
@@ -187,6 +276,63 @@ export function cobradoEsteMesPorMoneda(db: DB): Record<string, number> {
       return { moneda: cliente?.moneda ?? 'USD', monto: p.monto };
     });
   return totalesPorMoneda(items);
+}
+
+export function cobradoEsteAnioPorMoneda(db: DB): Record<string, number> {
+  const anioActual = hoyISO(0).slice(0, 4);
+  const items = db.pagos
+    .filter((p) => p.fecha.slice(0, 4) === anioActual)
+    .map((p) => {
+      const proyecto = db.proyectos.find((pr) => pr.id === p.proyectoId);
+      const cliente = proyecto ? db.clientes.find((c) => c.id === proyecto.clienteId) : undefined;
+      return { moneda: cliente?.moneda ?? 'USD', monto: p.monto };
+    });
+  return totalesPorMoneda(items);
+}
+
+/** Total cobrado por mes, últimos N meses (por defecto 6), SOLO en una moneda. Para Estadísticas. */
+export function cobradosUltimosMeses(db: DB, moneda: string, meses = 6): { mes: string; total: number }[] {
+  const resultado: { mes: string; total: number }[] = [];
+  const hoy = new Date();
+  for (let i = meses - 1; i >= 0; i--) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const clave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const total = db.pagos
+      .filter((p) => {
+        const proyecto = db.proyectos.find((pr) => pr.id === p.proyectoId);
+        const cliente = proyecto ? db.clientes.find((c) => c.id === proyecto.clienteId) : undefined;
+        return cliente?.moneda === moneda && p.fecha.slice(0, 7) === clave;
+      })
+      .reduce((s, p) => s + p.monto, 0);
+    resultado.push({ mes: d.toLocaleDateString('es', { month: 'short' }), total });
+  }
+  return resultado;
+}
+
+/** Serie diaria acumulada de cobros del mes en curso, SOLO en una moneda (nunca mezcla monedas). */
+export function serieCobrosDelMes(db: DB, moneda: string): { dia: string; acumulado: number }[] {
+  const hoy = new Date();
+  const anio = hoy.getFullYear();
+  const mes = hoy.getMonth();
+  const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+  const pagosDelMes = db.pagos.filter((p) => {
+    const proyecto = db.proyectos.find((pr) => pr.id === p.proyectoId);
+    const cliente = proyecto ? db.clientes.find((c) => c.id === proyecto.clienteId) : undefined;
+    return cliente?.moneda === moneda && p.fecha.slice(0, 7) === hoyISO(0).slice(0, 7);
+  });
+  const porDia: Record<number, number> = {};
+  for (const p of pagosDelMes) {
+    const dia = Number(p.fecha.slice(8, 10));
+    porDia[dia] = (porDia[dia] ?? 0) + p.monto;
+  }
+  const serie: { dia: string; acumulado: number }[] = [];
+  let acumulado = 0;
+  const hastaDia = hoy.getMonth() === mes && hoy.getFullYear() === anio ? hoy.getDate() : diasEnMes;
+  for (let d = 1; d <= hastaDia; d++) {
+    acumulado += porDia[d] ?? 0;
+    serie.push({ dia: String(d), acumulado });
+  }
+  return serie;
 }
 
 export function cobradoMesAnteriorPorMoneda(db: DB): Record<string, number> {

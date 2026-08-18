@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Download } from 'lucide-react';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
-import { obtenerDB, proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
+import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
+import { useAppData } from '@/components/app/AppDataProvider';
+import { proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
+import { capacidadesDe } from '@/lib/planes';
+import { exportarClientesCSV } from '@/lib/csv-export';
 import { simboloMoneda } from '@/lib/onboarding';
 
 interface ClienteResumen {
@@ -20,53 +24,68 @@ interface ClienteResumen {
 const ORDEN_URGENCIA: Record<string, number> = { atrasado: 0, vence_hoy: 1, proximo: 2, al_dia: 3, pagado: 4 };
 
 export default function ClientesPage() {
-  const [resumen, setResumen] = useState<ClienteResumen[] | null>(null);
+  const { db, plan } = useAppData();
+  const capacidades = capacidadesDe(plan);
   const [buscar, setBuscar] = useState('');
 
-  useEffect(() => {
-    obtenerDB().then((db) => {
-      const proyectos = proyectosConDatos(db);
-      const porCliente = new Map<string, ProyectoConDatos[]>();
-      for (const p of proyectos) {
-        const lista = porCliente.get(p.cliente.id) ?? [];
-        lista.push(p);
-        porCliente.set(p.cliente.id, lista);
-      }
-      const filas: ClienteResumen[] = [];
-      for (const [, lista] of porCliente) {
-        const ordenada = [...lista].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]);
-        const peor = ordenada[0];
-        filas.push({
-          id: peor.cliente.id,
-          nombre: peor.cliente.nombre,
-          moneda: peor.cliente.moneda,
-          saldo: lista.reduce((s, p) => s + p.saldo, 0),
-          peorEstado: peor.estado,
-          peorProyecto: peor,
-        });
-      }
-      filas.sort((a, b) => ORDEN_URGENCIA[a.peorEstado] - ORDEN_URGENCIA[b.peorEstado]);
-      setResumen(filas);
-    });
-  }, []);
-
-  if (!resumen) return null;
+  const resumen = useMemo(() => {
+    const proyectos = proyectosConDatos(db);
+    const porCliente = new Map<string, ProyectoConDatos[]>();
+    for (const p of proyectos) {
+      const lista = porCliente.get(p.cliente.id) ?? [];
+      lista.push(p);
+      porCliente.set(p.cliente.id, lista);
+    }
+    const filas: ClienteResumen[] = [];
+    for (const [, lista] of porCliente) {
+      const ordenada = [...lista].sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]);
+      const peor = ordenada[0];
+      filas.push({
+        id: peor.cliente.id,
+        nombre: peor.cliente.nombre,
+        moneda: peor.cliente.moneda,
+        saldo: lista.reduce((s, p) => s + p.saldo, 0),
+        peorEstado: peor.estado,
+        peorProyecto: peor,
+      });
+    }
+    filas.sort((a, b) => ORDEN_URGENCIA[a.peorEstado] - ORDEN_URGENCIA[b.peorEstado]);
+    return filas;
+  }, [db]);
 
   const filtrados = buscar.trim()
     ? resumen.filter((c) => c.nombre.toLowerCase().includes(buscar.trim().toLowerCase()))
     : resumen;
 
   return (
-    <div className="mx-auto w-full max-w-[480px] px-5 pt-6">
+    <div className="mx-auto w-full max-w-[480px] px-5 pt-6 md:max-w-none md:px-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">Clientes</h1>
-        <Link
-          href="/app/clientes/nuevo"
-          aria-label="Agregar cliente"
-          className="flex size-10 items-center justify-center rounded-full bg-[var(--accent)]"
-        >
-          <Plus size={19} color="var(--bg)" aria-hidden="true" />
-        </Link>
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)] md:text-[24px]">Clientes</h1>
+        <div className="flex items-center gap-2">
+          {resumen.length > 0 &&
+            (capacidades.canExportCSV ? (
+              <button
+                type="button"
+                onClick={() => exportarClientesCSV(db.clientes)}
+                aria-label="Exportar a CSV"
+                className="hidden h-10 items-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] px-3 text-[13px] font-semibold text-[var(--text-primary)] md:flex"
+              >
+                <Download size={14} aria-hidden="true" />
+                CSV
+              </button>
+            ) : (
+              <span className="hidden md:block">
+                <InsigniaBloqueo plan="pro" />
+              </span>
+            ))}
+          <Link
+            href="/app/clientes/nuevo"
+            aria-label="Agregar cliente"
+            className="flex size-10 items-center justify-center rounded-full bg-[var(--accent)]"
+          >
+            <Plus size={19} color="var(--bg)" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
 
       {resumen.length > 3 && (
@@ -95,7 +114,7 @@ export default function ClientesPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-5 flex flex-col gap-3 pb-8">
+        <div className="mt-5 grid grid-cols-1 gap-3 pb-8 md:grid-cols-2 xl:grid-cols-3">
           {filtrados.map((c) => (
             <Link
               key={c.id}
