@@ -471,6 +471,58 @@ export async function actualizarMonedaPrincipal(moneda: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── Meta mensual y proyección de flujo (Premium) — matemática determinística,
+// nunca IA (regla dura del proyecto: la IA solo interpreta, jamás calcula). ──
+
+export async function obtenerMetaMensual(): Promise<number | null> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from('profiles').select('meta_mensual').eq('id', user.id).single();
+  return data?.meta_mensual != null ? Number(data.meta_mensual) : null;
+}
+
+export async function actualizarMetaMensual(monto: number | null): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('profiles').update({ meta_mensual: monto }).eq('id', user.id);
+  if (error) throw error;
+}
+
+export interface PuntoProyeccion {
+  mes: string;
+  esperado: number;
+}
+
+/**
+ * Proyección de flujo: cuánto espera cobrar por mes en los próximos `meses`,
+ * SOLO en una moneda (nunca mezcla monedas). El primer punto agrupa todo lo
+ * atrasado + lo que vence este mes ("esperado ahora"); los siguientes son
+ * exactamente lo que vence en ese mes. Es una suma de saldos ya registrados
+ * con su fecha de vencimiento — cero adivinanza, cero IA.
+ */
+export function proyeccionFlujo(db: DB, moneda: string, meses = 6): PuntoProyeccion[] {
+  const pendientes = proyectosConDatos(db).filter((p) => p.saldo > 0 && p.cliente.moneda === moneda);
+  const hoy = new Date();
+  const resultado: PuntoProyeccion[] = [];
+  for (let i = 0; i < meses; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
+    const claveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    let esperado = 0;
+    for (const p of pendientes) {
+      const clave = p.fechaPromesa.slice(0, 7);
+      if (i === 0 ? clave <= claveMes : clave === claveMes) esperado += p.saldo;
+    }
+    resultado.push({ mes: d.toLocaleDateString('es', { month: 'short' }), esperado });
+  }
+  return resultado;
+}
+
 export async function obtenerTasas(): Promise<TasaCambio[]> {
   const supabase = createClient();
   const {

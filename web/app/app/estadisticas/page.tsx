@@ -8,10 +8,11 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Sparkles, FileDown, ChevronRight } from 'lucide-react';
+import { Sparkles, FileDown, ChevronRight, TrendingUp } from 'lucide-react';
 import { BloqueoPlan } from '@/components/app/BloqueoPlan';
+import { MetaMensual } from '@/components/app/MetaMensual';
 import { useAppData } from '@/components/app/AppDataProvider';
-import { proyectosConDatos, cobradosUltimosMeses, totalesPorMoneda } from '@/lib/app-data';
+import { proyectosConDatos, cobradosUltimosMeses, totalesPorMoneda, proyeccionFlujo } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
 import { simboloMoneda } from '@/lib/onboarding';
 
@@ -25,6 +26,7 @@ export default function EstadisticasPage() {
 
   const proyectos = useMemo(() => proyectosConDatos(db), [db]);
   const serieMensual = useMemo(() => cobradosUltimosMeses(db, monedaPrincipal, 6), [db, monedaPrincipal]);
+  const proyeccion = useMemo(() => proyeccionFlujo(db, monedaPrincipal, 6), [db, monedaPrincipal]);
 
   const porCliente = useMemo(() => {
     const mapa = new Map<string, { nombre: string; moneda: string; total: number }>();
@@ -116,6 +118,39 @@ export default function EstadisticasPage() {
               )}
             </section>
           </div>
+
+          {/* Premium — meta mensual y proyección de flujo. */}
+          {capacidades.canUseGoals && capacidades.canUseForecasting ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <section className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+                <MetaMensual />
+              </section>
+
+              <section className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+                <div className="flex items-center gap-2.5">
+                  <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)]">
+                    <TrendingUp size={16} color="var(--accent)" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">Proyección de flujo</h2>
+                    <p className="text-[12px] text-[var(--text-secondary)]">Lo que esperas cobrar, mes a mes</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-[180px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={proyeccion} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
+                      <CartesianGrid vertical={false} stroke="color-mix(in oklab, var(--text-tertiary) 14%, transparent)" />
+                      <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={44} />
+                      <Tooltip formatter={(v) => monto(monedaPrincipal, Number(v))} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: 'var(--shadow-2)', fontSize: 12 }} />
+                      <Bar dataKey="esperado" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="mt-1 text-[11px] text-[var(--text-secondary)]">Según las fechas prometidas de tus proyectos pendientes, en {monedaPrincipal}.</p>
+              </section>
+            </div>
+          ) : null}
 
           {/* Premium — el análisis con IA y el reporte en PDF ya existen en Cuenta; se enlazan aquí. */}
           <section className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">

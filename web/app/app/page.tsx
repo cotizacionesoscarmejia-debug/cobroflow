@@ -8,6 +8,7 @@ import { NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { BloqueoPlan } from '@/components/app/BloqueoPlan';
+import { MetaMensual } from '@/components/app/MetaMensual';
 import { useAppData } from '@/components/app/AppDataProvider';
 import {
   proyectosConDatos,
@@ -385,6 +386,13 @@ export default function DashboardPage() {
               <ChevronRight size={14} aria-hidden="true" />
             </Link>
           </motion.section>
+
+          {/* Meta mensual — Premium */}
+          {capacidades.canUseGoals && (
+            <motion.section {...entra(5)} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+              <MetaMensual />
+            </motion.section>
+          )}
 
           {/* Resumen rápido */}
           <motion.section {...entra(5.5)} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">

@@ -62,11 +62,8 @@ const CAPACIDADES: Record<Plan, Capacidades> = {
     canExportCSV: true,
     canExportPDF: true,
     canUseAI: true,
-    // Proyección de flujo y metas mensuales NO existen todavía en CobroFlow —
-    // se dejan en `false` a propósito (nunca mostrar una función que no
-    // existe de verdad). El día que se construyan, solo cambia esta línea.
-    canUseForecasting: false,
-    canUseGoals: false,
+    canUseForecasting: true,
+    canUseGoals: true,
     canUseReminderTemplates: true,
   },
 };

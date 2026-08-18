@@ -17,6 +17,7 @@ import {
   obtenerTasas,
   obtenerTourCompletado,
   marcarTourCompletado,
+  obtenerMetaMensual,
   type DB,
   type TasaCambio,
   type Perfil,
@@ -30,6 +31,7 @@ interface AppDataContextValue {
   tasas: TasaCambio[];
   perfil: Perfil;
   userId: string;
+  metaMensual: number | null;
   cargando: boolean;
   recargar: () => Promise<void>;
   tourVisible: boolean;
@@ -50,6 +52,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [tasas, setTasas] = useState<TasaCambio[]>([]);
   const [perfil, setPerfil] = useState<Perfil>(PERFIL_VACIO);
   const [userId, setUserId] = useState('');
+  const [metaMensual, setMetaMensual] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [tourVisible, setTourVisible] = useState(false);
 
@@ -63,18 +66,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setUserId(user.id);
-    const [dbData, perfilMoneda, tasasData, perfilData, tourCompletado] = await Promise.all([
+    const [dbData, perfilMoneda, tasasData, perfilData, tourCompletado, meta] = await Promise.all([
       obtenerDB(),
       obtenerPerfilMoneda(),
       obtenerTasas(),
       obtenerPerfil(),
       obtenerTourCompletado(),
+      obtenerMetaMensual(),
     ]);
     setDb(dbData);
     setPlan(perfilMoneda.plan);
     setMonedaPrincipal(perfilMoneda.monedaPrincipal);
     setTasas(tasasData);
     setPerfil(perfilData);
+    setMetaMensual(meta);
     setCargando(false);
     if (!tourCompletado) setTourVisible(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,7 +100,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppDataContext.Provider
-      value={{ db, plan, monedaPrincipal, tasas, perfil, userId, cargando, recargar: cargar, tourVisible, cerrarTour, reabrirTour }}
+      value={{ db, plan, monedaPrincipal, tasas, perfil, userId, metaMensual, cargando, recargar: cargar, tourVisible, cerrarTour, reabrirTour }}
     >
       {children}
     </AppDataContext.Provider>
