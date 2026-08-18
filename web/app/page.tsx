@@ -33,6 +33,7 @@ export default function LandingPage() {
         ctaHref={CTA_HREF}
         socialProof={<span>Sin tarjeta de crédito para empezar</span>}
         visualPlaceholderSugerencia="captura del Panel principal con el saldo cobrado, lo pendiente y los clientes atrasados"
+        visual={<img src="/captura-dashboard.png" alt="Panel principal de CobroFlow: cobrado este mes, pendiente por cobrar y clientes atrasados" className="w-full" />}
       />
 
       {/* 2. PROBLEMA */}

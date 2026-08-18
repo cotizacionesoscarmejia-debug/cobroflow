@@ -1,5 +1,33 @@
 # ESTADO — CobroFlow
-Última actualización: 2026-08-17 | Sesión actual: 6
+Última actualización: 2026-08-18 | Sesión actual: 6
+
+✅ CHECKPOINT — Sesión 6: Meta mensual + Proyección de flujo (Premium), HECHO y DESPLEGADO. El
+usuario aprobó el rediseño integral ("Está todo muy bien") y pidió construir las 2 funciones
+Premium que se habían dejado explícitamente sin construir por no existir antes (ver la decisión de
+alcance más abajo, ahora obsoleta).
+- Migración `20260817020000_meta_mensual.sql`: `profiles.meta_mensual numeric(12,2)` nullable —
+  una sola columna, no una tabla (es un número por cuenta, no un historial). Aplicada por el
+  usuario mismo en su Editor SQL de Supabase (el agente no tenía sesión iniciada en el navegador
+  de esta sesión) y confirmada.
+- `lib/app-data.ts`: `obtenerMetaMensual`/`actualizarMetaMensual` (lee/escribe la columna nueva) +
+  `proyeccionFlujo(db, moneda, meses)` — proyección determinística (CERO IA) que suma los saldos
+  pendientes de los proyectos por mes de `fechaPromesa`, filtrando SIEMPRE a una sola moneda a la
+  vez (misma regla de multimoneda de toda la app).
+- `lib/planes.ts`: `canUseForecasting`/`canUseGoals` pasan de `false` a `true` para Premium (ya
+  estaban `true` para el resto de capacidades Premium, solo faltaban estas dos).
+- `components/app/MetaMensual.tsx` (nuevo, reutilizable): define/edita la meta, barra de progreso
+  real contra lo cobrado este mes (`cobradoEsteMesPorMoneda`) — se usa compacta en el Dashboard
+  (`app/app/page.tsx`, columna derecha, solo Premium) y completa en Estadísticas.
+- `app/app/estadisticas/page.tsx`: nueva sección Premium (grid 2 columnas) con Meta mensual +
+  gráfica de barras "Proyección de flujo" (recharts, 6 meses) — separada de la sección existente
+  de IA/PDF, ambas Premium pero mostrando cosas distintas.
+- `AppDataProvider` ya exponía `metaMensual` desde antes de este checkpoint (quedó a medio hacer
+  en el corte de contexto anterior) — confirmado completo end-to-end.
+- Verificado: `tsc --noEmit` limpio, `npm run build` limpio (29 rutas, sin cambios de conteo),
+  `npm run lint` sin errores NUEVOS (los ~16 preexistentes de landing/onboarding/paywall siguen
+  intactos, fuera de alcance). Sin sesión real disponible para verificación visual en vivo —
+  mismo límite de siempre; el usuario puede confirmarlo en su próximo login como Premium.
+- Commit `0bb978a`, pusheado a `main` → deploy automático en Vercel.
 
 ⏸️ CHECKPOINT — Sesión 6: REDISEÑO INTEGRAL de la app autenticada (a pedido del usuario, con
 imagen de referencia de un SaaS financiero — sidebar verde oscuro, tarjetas, tabla de
@@ -75,10 +103,8 @@ cerrar. **Pendiente real: que el usuario lo vea con su cuenta real** (mismo lím
 el agente no tiene credenciales para loguearse).
 
 **Decisiones de alcance (para no sobrecomplicar, rule 53 del propio prompt del usuario):**
-- NO se construyó "proyección de flujo" ni "metas mensuales" (Premium, punto 19) — son funciones
-  Premium mencionadas en el prompt pero que NUNCA existieron en CobroFlow; `canUseForecasting`/
-  `canUseGoals` quedan en `false` a propósito en `lib/planes.ts` con un comentario explicando por
-  qué (nunca mostrar una función que no existe de verdad).
+- ~~NO se construyó "proyección de flujo" ni "metas mensuales"~~ — **CONSTRUIDO** en el checkpoint
+  de arriba (2026-08-18), a pedido explícito del usuario tras aprobar el rediseño.
 - NO se construyó un sistema de notificaciones real (push/campanita persistente) — el ícono de
   campana del topbar muestra un contador REAL derivado de datos (clientes atrasados), no una
   bandeja de notificaciones inventada, tal como pidió explícitamente el prompt ("si no existe un
@@ -406,9 +432,11 @@ cada ronda vive en `docs/revisiones/<pantalla>-veredicto.md`.
 
 **Único bloqueante estructural real** (landing): el Hero y "La app por dentro" mostraban
 placeholders en vez de capturas reales — YA RESUELTO en la práctica porque la app interna ahora
-existe. Pendiente mecánico (no de diseño): montar 1 screenshot real del Dashboard en `Hero.tsx`
-(prop `visual`) y en los 4 frames de `AppPorDentro.tsx` (prop `src`), y volver a correr
-`revisor-visual` sobre la landing — con eso tiene buenas chances de cruzar el gate.
+existe. **Hero: HECHO (2026-08-18)** — el usuario subió `web/public/captura-dashboard.png` (mockup
+del Panel principal) y ya está montada en `Hero.tsx` (prop `visual`, reemplaza el placeholder
+punteado). Pendiente mecánico (no de diseño): montar screenshots reales en los 4 frames de
+`AppPorDentro.tsx` (prop `src`), y volver a correr `revisor-visual` sobre la landing completa —
+con eso tiene buenas chances de cruzar el gate.
 
 **Pantallas secundarias** (Login, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente,
 Cuenta): verificadas a mano con screenshot + checklist, sin revisor-visual formal — correcto
