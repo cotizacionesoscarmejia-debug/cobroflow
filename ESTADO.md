@@ -432,11 +432,16 @@ cada ronda vive en `docs/revisiones/<pantalla>-veredicto.md`.
 
 **Único bloqueante estructural real** (landing): el Hero y "La app por dentro" mostraban
 placeholders en vez de capturas reales — YA RESUELTO en la práctica porque la app interna ahora
-existe. **Hero: HECHO (2026-08-18)** — el usuario subió `web/public/captura-dashboard.png` (mockup
-del Panel principal) y ya está montada en `Hero.tsx` (prop `visual`, reemplaza el placeholder
-punteado). Pendiente mecánico (no de diseño): montar screenshots reales en los 4 frames de
-`AppPorDentro.tsx` (prop `src`), y volver a correr `revisor-visual` sobre la landing completa —
-con eso tiene buenas chances de cruzar el gate.
+existe. **Hero + AppPorDentro: HECHO (2026-08-18)** — el usuario subió 5 mockups (formato teléfono,
+9:19.5, ya recortados por él): `captura-dashboard.png` (Hero), `panel-principal.png`,
+`centro-de-cobros.png`, `recordatorio-de-pagos.png`, `estadisticas.png` (los 4 frames de "Tu
+negocio, de un vistazo"). Todos en `web/public/`, renombrados a kebab-case ASCII (uno traía tilde
+en el nombre original — se evita depender de URL-encoding en el `src`). Montados en `Hero.tsx`
+(prop `visual`) y `AppPorDentro.tsx` (prop `src` de cada frame), reemplazando los dos placeholders
+punteados. Verificado por screenshot en preview: encajan limpio en el frame de teléfono, sin
+recorte raro (ya venían en el ratio correcto). Pendiente: volver a correr `revisor-visual` sobre
+la landing completa ahora que ya no tiene placeholders — con eso tiene buenas chances de cruzar
+el gate.
 
 **Pantallas secundarias** (Login, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente,
 Cuenta): verificadas a mano con screenshot + checklist, sin revisor-visual formal — correcto

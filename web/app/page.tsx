@@ -83,10 +83,10 @@ export default function LandingPage() {
       <AppPorDentro
         tituloMarked="Tu negocio, [acento]de un vistazo[/acento]."
         frames={[
-          { label: 'Sabes cuánto has cobrado este mes', nombrePantalla: 'Panel principal' },
-          { label: 'Ves quién necesita seguimiento hoy', nombrePantalla: 'Centro de cobros' },
-          { label: 'Mandas el recordatorio en un toque', nombrePantalla: 'Recordatorio de pago' },
-          { label: 'Ves tu progreso mes a mes', nombrePantalla: 'Estadísticas' },
+          { label: 'Sabes cuánto has cobrado este mes', nombrePantalla: 'Panel principal', src: '/panel-principal.png' },
+          { label: 'Ves quién necesita seguimiento hoy', nombrePantalla: 'Centro de cobros', src: '/centro-de-cobros.png' },
+          { label: 'Mandas el recordatorio en un toque', nombrePantalla: 'Recordatorio de pago', src: '/recordatorio-de-pagos.png' },
+          { label: 'Ves tu progreso mes a mes', nombrePantalla: 'Estadísticas', src: '/estadisticas.png' },
         ]}
         ctaLabel={CTA_LABEL}
         ctaHref={CTA_HREF}
