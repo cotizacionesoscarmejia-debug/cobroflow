@@ -1,6 +1,36 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-18 | Sesión actual: 6
 
+✅ CHECKPOINT — Sesión 6: Gastos (utilidad neta), HECHO y DESPLEGADO en código — falta que el
+usuario aplique la migración SQL. A pedido explícito del usuario (recomendación propia validada:
+"Free sin acceso, Pro registra gastos y ve utilidad neta, Premium además categoriza y eso alimenta
+la Proyección de flujo").
+- Migración `20260818000000_expenses.sql`: tabla `expenses` (monto, moneda, categoria nullable,
+  descripcion, fecha, recurrente, user_id) + RLS igual patrón que clients/projects/payments +
+  trigger `valida_limite_free` extendido (Free no puede insertar NINGÚN gasto — defensa en
+  servidor, no solo en el gate del frontend). **NO aplicada todavía en producción** — pendiente
+  de que el usuario la corra en su Editor SQL de Supabase (se le va a pasar en el cierre de este
+  checkpoint). Mientras no se aplique: `obtenerGastos()` devuelve `[]` sin romper nada (no valida
+  `error`), pero `agregarGasto()` SÍ falla con mensaje de error visible — avisar al usuario.
+- `lib/planes.ts`: `canUseExpenses` (Pro+) y `canCategorizeExpenses` (Premium, también gatea el
+  toggle "recurrente" ya que solo Premium lo usa en la Proyección de flujo).
+- `lib/app-data.ts`: tipo `Gasto`, `CATEGORIAS_GASTO` (6 categorías fijas), `obtenerGastos`/
+  `agregarGasto`/`eliminarGasto`, `gastadoEsteMesPorMoneda`, `gastadoPorCategoria`. `proyeccionFlujo`
+  ahora acepta `gastosRecurrentes` y devuelve `neto` (bruto - gastos recurrentes de esa moneda)
+  además de `esperado` (bruto, sin tocar) — matemática determinística, cero IA.
+- `/app/gastos` (lista + utilidad neta del mes por moneda, Pro+ con `BloqueoPlan` para Free) y
+  `/app/gastos/nuevo` (formulario; categoría y "es recurrente" solo visibles si Premium). Ítem
+  nuevo en el sidebar/nav móvil (`AppShell.tsx`), siempre visible — igual patrón que Estadísticas
+  (el gate vive DENTRO de la pantalla, no escondiendo el enlace).
+- Panel principal: fila "Utilidad neta (mes)" en Resumen rápido, solo Pro+ (verde si positiva,
+  rojo si negativa). Estadísticas: nueva sección "Gastos este mes" (Pro+: total por moneda;
+  Premium: desglose por categoría) + la Proyección de flujo ahora grafica `neto` en vez de
+  `esperado` (son iguales si no hay gastos recurrentes, así que no cambia nada para quien no los usa).
+- Verificado: `tsc --noEmit` limpio, `npm run build` limpio (31 rutas, incluye `/app/gastos` y
+  `/app/gastos/nuevo`), y confirmado que `/app/gastos` sin sesión redirige a `/login` (protegida
+  por el middleware existente, sin error 500). Sin sesión real disponible para ver la pantalla
+  con datos — mismo límite de siempre.
+
 ✅ CHECKPOINT — Sesión 6: Meta mensual + Proyección de flujo (Premium), HECHO y DESPLEGADO. El
 usuario aprobó el rediseño integral ("Está todo muy bien") y pidió construir las 2 funciones
 Premium que se habían dejado explícitamente sin construir por no existir antes (ver la decisión de

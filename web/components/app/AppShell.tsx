@@ -16,6 +16,7 @@ import {
   Users,
   Briefcase,
   Receipt,
+  TrendingDown,
   BarChart3,
   Bell,
   Settings,
@@ -36,6 +37,7 @@ const SECCIONES = [
   { href: '/app/clientes', label: 'Clientes', icon: Users },
   { href: '/app/proyectos', label: 'Proyectos', icon: Briefcase },
   { href: '/app/pagos', label: 'Pagos', icon: Receipt },
+  { href: '/app/gastos', label: 'Gastos', icon: TrendingDown },
   { href: '/app/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { href: '/app/recordatorios', label: 'Recordatorios', icon: Bell },
   { href: '/app/cuenta', label: 'Configuración', icon: Settings },
@@ -50,6 +52,7 @@ const MOBILE_PRINCIPAL = [
 ] as const;
 const MOBILE_MAS = [
   { href: '/app/proyectos', label: 'Proyectos', icon: Briefcase },
+  { href: '/app/gastos', label: 'Gastos', icon: TrendingDown },
   { href: '/app/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { href: '/app/recordatorios', label: 'Recordatorios', icon: Bell },
   { href: '/app/cuenta', label: 'Configuración', icon: Settings },

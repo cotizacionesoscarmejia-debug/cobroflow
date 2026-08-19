@@ -496,7 +496,10 @@ export async function actualizarMetaMensual(monto: number | null): Promise<void>
 
 export interface PuntoProyeccion {
   mes: string;
+  /** Ingreso bruto proyectado (suma de saldos que vencen ese mes). */
   esperado: number;
+  /** esperado - gastos recurrentes de esa moneda (0 si no se pasan gastos). */
+  neto: number;
 }
 
 /**
@@ -505,9 +508,14 @@ export interface PuntoProyeccion {
  * atrasado + lo que vence este mes ("esperado ahora"); los siguientes son
  * exactamente lo que vence en ese mes. Es una suma de saldos ya registrados
  * con su fecha de vencimiento — cero adivinanza, cero IA.
+ * `gastosRecurrentes` (Premium): gastos marcados como recurrentes se asumen
+ * iguales cada mes y se restan del bruto para dar el neto esperado.
  */
-export function proyeccionFlujo(db: DB, moneda: string, meses = 6): PuntoProyeccion[] {
+export function proyeccionFlujo(db: DB, moneda: string, meses = 6, gastosRecurrentes: Gasto[] = []): PuntoProyeccion[] {
   const pendientes = proyectosConDatos(db).filter((p) => p.saldo > 0 && p.cliente.moneda === moneda);
+  const gastoRecurrenteMensual = gastosRecurrentes
+    .filter((g) => g.recurrente && g.moneda === moneda)
+    .reduce((s, g) => s + g.monto, 0);
   const hoy = new Date();
   const resultado: PuntoProyeccion[] = [];
   for (let i = 0; i < meses; i++) {
@@ -518,9 +526,108 @@ export function proyeccionFlujo(db: DB, moneda: string, meses = 6): PuntoProyecc
       const clave = p.fechaPromesa.slice(0, 7);
       if (i === 0 ? clave <= claveMes : clave === claveMes) esperado += p.saldo;
     }
-    resultado.push({ mes: d.toLocaleDateString('es', { month: 'short' }), esperado });
+    resultado.push({ mes: d.toLocaleDateString('es', { month: 'short' }), esperado, neto: esperado - gastoRecurrenteMensual });
   }
   return resultado;
+}
+
+// ── Gastos (Pro+; categorías y recurrencia solo Premium) — para la utilidad
+// neta (cobrado - gastado) y para restar recurrentes de la Proyección de flujo. ──
+
+export interface Gasto {
+  id: string;
+  monto: number;
+  moneda: string;
+  categoria: string | null;
+  descripcion: string;
+  fecha: string;
+  recurrente: boolean;
+}
+
+export const CATEGORIAS_GASTO = [
+  'Software y herramientas',
+  'Transporte',
+  'Contratistas y freelancers',
+  'Marketing y publicidad',
+  'Oficina y suministros',
+  'Otro',
+] as const;
+
+export async function obtenerGastos(): Promise<Gasto[]> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('expenses')
+    .select('id, monto, moneda, categoria, descripcion, fecha, recurrente')
+    .eq('user_id', user.id)
+    .order('fecha', { ascending: false });
+  return (data ?? []).map((g) => ({
+    id: g.id,
+    monto: Number(g.monto),
+    moneda: g.moneda,
+    categoria: g.categoria,
+    descripcion: g.descripcion ?? '',
+    fecha: g.fecha,
+    recurrente: g.recurrente,
+  }));
+}
+
+export async function agregarGasto(datos: {
+  monto: number;
+  moneda: string;
+  categoria: string | null;
+  descripcion: string;
+  fecha: string;
+  recurrente: boolean;
+}): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('expenses').insert({
+    user_id: user.id,
+    monto: datos.monto,
+    moneda: datos.moneda,
+    categoria: datos.categoria,
+    descripcion: datos.descripcion,
+    fecha: datos.fecha,
+    recurrente: datos.recurrente,
+  });
+  if (error) throw error;
+}
+
+export async function eliminarGasto(id: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('expenses').delete().eq('id', id).eq('user_id', user.id);
+  if (error) throw error;
+}
+
+export function gastadoEsteMesPorMoneda(gastos: Gasto[]): Record<string, number> {
+  const mesActual = hoyISO(0).slice(0, 7);
+  const items = gastos.filter((g) => g.fecha.slice(0, 7) === mesActual).map((g) => ({ moneda: g.moneda, monto: g.monto }));
+  return totalesPorMoneda(items);
+}
+
+/** Gastado por categoría este mes, SOLO en una moneda — para el desglose Premium. */
+export function gastadoPorCategoria(gastos: Gasto[], moneda: string): { categoria: string; total: number }[] {
+  const mesActual = hoyISO(0).slice(0, 7);
+  const mapa = new Map<string, number>();
+  for (const g of gastos) {
+    if (g.moneda !== moneda || g.fecha.slice(0, 7) !== mesActual) continue;
+    const cat = g.categoria ?? 'Sin categoría';
+    mapa.set(cat, (mapa.get(cat) ?? 0) + g.monto);
+  }
+  return Array.from(mapa.entries())
+    .map(([categoria, total]) => ({ categoria, total }))
+    .sort((a, b) => b.total - a.total);
 }
 
 export async function obtenerTasas(): Promise<TasaCambio[]> {

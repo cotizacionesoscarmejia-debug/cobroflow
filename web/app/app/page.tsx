@@ -20,6 +20,7 @@ import {
   totalesPorMoneda,
   totalConsolidado,
   nombreParaMostrar,
+  gastadoEsteMesPorMoneda,
   type ProyectoConDatos,
 } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
@@ -106,7 +107,7 @@ function TarjetaStat({
 }
 
 export default function DashboardPage() {
-  const { db, plan, monedaPrincipal, tasas, perfil, cargando } = useAppData();
+  const { db, plan, monedaPrincipal, tasas, perfil, gastos, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
 
   if (cargando) return <SkeletonDashboard />;
@@ -114,6 +115,8 @@ export default function DashboardPage() {
   const nombreUsuario = nombreParaMostrar(perfil);
   const proyectos = proyectosConDatos(db);
   const cobradoPorMoneda = cobradoEsteMesPorMoneda(db);
+  const gastadoPorMoneda = gastadoEsteMesPorMoneda(gastos);
+  const utilidadNeta = (cobradoPorMoneda[monedaPrincipal] ?? 0) - (gastadoPorMoneda[monedaPrincipal] ?? 0);
   const cobradoAnteriorPorMoneda = cobradoMesAnteriorPorMoneda(db);
   const cobradoAnioPorMoneda = cobradoEsteAnioPorMoneda(db);
 
@@ -423,6 +426,19 @@ export default function DashboardPage() {
                 </span>
                 <span className="text-[13.5px] font-bold tabular-nums text-[var(--text-primary)]">{clientesAtrasados}</span>
               </div>
+              {capacidades.canUseExpenses && (
+                <div className="flex items-center justify-between border-t border-[color-mix(in_oklab,var(--text-tertiary)_14%,transparent)] pt-3">
+                  <Link href="/app/gastos" className="text-[13px] text-[var(--text-secondary)]">
+                    Utilidad neta (mes)
+                  </Link>
+                  <span
+                    className="text-[13.5px] font-bold tabular-nums"
+                    style={{ color: utilidadNeta >= 0 ? 'var(--status-success)' : 'var(--status-error)' }}
+                  >
+                    {monto(monedaPrincipal, utilidadNeta)}
+                  </span>
+                </div>
+              )}
             </div>
           </motion.section>
         </div>

@@ -8,11 +8,18 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Sparkles, FileDown, ChevronRight, TrendingUp } from 'lucide-react';
+import { Sparkles, FileDown, ChevronRight, TrendingUp, Receipt } from 'lucide-react';
 import { BloqueoPlan } from '@/components/app/BloqueoPlan';
 import { MetaMensual } from '@/components/app/MetaMensual';
 import { useAppData } from '@/components/app/AppDataProvider';
-import { proyectosConDatos, cobradosUltimosMeses, totalesPorMoneda, proyeccionFlujo } from '@/lib/app-data';
+import {
+  proyectosConDatos,
+  cobradosUltimosMeses,
+  totalesPorMoneda,
+  proyeccionFlujo,
+  gastadoEsteMesPorMoneda,
+  gastadoPorCategoria,
+} from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
 import { simboloMoneda } from '@/lib/onboarding';
 
@@ -21,12 +28,18 @@ function monto(moneda: string, valor: number): string {
 }
 
 export default function EstadisticasPage() {
-  const { db, plan, monedaPrincipal, perfil } = useAppData();
+  const { db, plan, monedaPrincipal, perfil, gastos } = useAppData();
   const capacidades = capacidadesDe(plan);
 
   const proyectos = useMemo(() => proyectosConDatos(db), [db]);
   const serieMensual = useMemo(() => cobradosUltimosMeses(db, monedaPrincipal, 6), [db, monedaPrincipal]);
-  const proyeccion = useMemo(() => proyeccionFlujo(db, monedaPrincipal, 6), [db, monedaPrincipal]);
+  const proyeccion = useMemo(() => proyeccionFlujo(db, monedaPrincipal, 6, gastos), [db, monedaPrincipal, gastos]);
+  const gastadoPorMoneda = useMemo(() => gastadoEsteMesPorMoneda(gastos), [gastos]);
+  const gastoRecurrenteMensual = useMemo(
+    () => gastos.filter((g) => g.recurrente && g.moneda === monedaPrincipal).reduce((s, g) => s + g.monto, 0),
+    [gastos, monedaPrincipal]
+  );
+  const porCategoria = useMemo(() => gastadoPorCategoria(gastos, monedaPrincipal), [gastos, monedaPrincipal]);
 
   const porCliente = useMemo(() => {
     const mapa = new Map<string, { nombre: string; moneda: string; total: number }>();
@@ -119,6 +132,44 @@ export default function EstadisticasPage() {
             </section>
           </div>
 
+          {/* Gastos — Pro+; desglose por categoría solo Premium. */}
+          {capacidades.canUseExpenses && (
+            <section className="rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)] md:p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)]">
+                    <Receipt size={16} color="var(--accent)" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">Gastos este mes</h2>
+                </div>
+                <Link href="/app/gastos" className="text-[12.5px] font-semibold text-[var(--accent)]">
+                  Ver todos
+                </Link>
+              </div>
+              {Object.keys(gastadoPorMoneda).length === 0 ? (
+                <p className="mt-3 text-[12.5px] text-[var(--text-secondary)]">Aún no registras gastos este mes.</p>
+              ) : capacidades.canCategorizeExpenses ? (
+                <div className="mt-3 flex flex-col gap-3">
+                  {porCategoria.map((c) => (
+                    <div key={c.categoria} className="flex items-center justify-between">
+                      <span className="text-[13.5px] font-medium text-[var(--text-primary)]">{c.categoria}</span>
+                      <span className="text-[13px] font-semibold tabular-nums text-[var(--text-primary)]">{monto(monedaPrincipal, c.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-col gap-3">
+                  {Object.entries(gastadoPorMoneda).map(([m, v]) => (
+                    <div key={m} className="flex items-center justify-between">
+                      <span className="text-[13.5px] font-medium text-[var(--text-primary)]">{m}</span>
+                      <span className="text-[13px] font-semibold tabular-nums text-[var(--text-primary)]">{monto(m, v)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Premium — meta mensual y proyección de flujo. */}
           {capacidades.canUseGoals && capacidades.canUseForecasting ? (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -133,7 +184,9 @@ export default function EstadisticasPage() {
                   </span>
                   <div>
                     <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">Proyección de flujo</h2>
-                    <p className="text-[12px] text-[var(--text-secondary)]">Lo que esperas cobrar, mes a mes</p>
+                    <p className="text-[12px] text-[var(--text-secondary)]">
+                      {gastoRecurrenteMensual > 0 ? 'Lo que esperas que te quede, mes a mes' : 'Lo que esperas cobrar, mes a mes'}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3 h-[180px] w-full">
@@ -143,11 +196,15 @@ export default function EstadisticasPage() {
                       <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={44} />
                       <Tooltip formatter={(v) => monto(monedaPrincipal, Number(v))} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: 'var(--shadow-2)', fontSize: 12 }} />
-                      <Bar dataKey="esperado" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                      <Bar dataKey="neto" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={28} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="mt-1 text-[11px] text-[var(--text-secondary)]">Según las fechas prometidas de tus proyectos pendientes, en {monedaPrincipal}.</p>
+                <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
+                  {gastoRecurrenteMensual > 0
+                    ? `Cobros esperados menos ${monto(monedaPrincipal, gastoRecurrenteMensual)} de gastos recurrentes, en ${monedaPrincipal}.`
+                    : `Según las fechas prometidas de tus proyectos pendientes, en ${monedaPrincipal}.`}
+                </p>
               </section>
             </div>
           ) : null}

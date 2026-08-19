@@ -24,6 +24,8 @@ export interface Capacidades {
   canUseForecasting: boolean;
   canUseGoals: boolean;
   canUseReminderTemplates: boolean;
+  canUseExpenses: boolean;
+  canCategorizeExpenses: boolean;
 }
 
 const CAPACIDADES: Record<Plan, Capacidades> = {
@@ -39,6 +41,8 @@ const CAPACIDADES: Record<Plan, Capacidades> = {
     canUseForecasting: false,
     canUseGoals: false,
     canUseReminderTemplates: false,
+    canUseExpenses: false,
+    canCategorizeExpenses: false,
   },
   pro: {
     limiteClientes: null,
@@ -52,6 +56,8 @@ const CAPACIDADES: Record<Plan, Capacidades> = {
     canUseForecasting: false,
     canUseGoals: false,
     canUseReminderTemplates: true,
+    canUseExpenses: true,
+    canCategorizeExpenses: false,
   },
   premium: {
     limiteClientes: null,
@@ -65,6 +71,8 @@ const CAPACIDADES: Record<Plan, Capacidades> = {
     canUseForecasting: true,
     canUseGoals: true,
     canUseReminderTemplates: true,
+    canUseExpenses: true,
+    canCategorizeExpenses: true,
   },
 };
 
