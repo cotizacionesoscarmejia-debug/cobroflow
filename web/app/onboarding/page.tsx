@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Wallet } from 'lucide-react';
 import { Marca, EncabezadoPaso, Chip, PasoTransicion, CtaFunnel, NumeroAnimado } from '@/components/onboarding/ui';
 import { Perforacion } from '@/components/landing/ui';
-import { guardarEstado, leerEstado, saldoPendiente, simboloMoneda, MONEDAS, PERFILES } from '@/lib/onboarding';
+import { guardarEstado, leerEstado, saldoPendiente, simboloMoneda, monedaSugerida, MONEDAS, PERFILES } from '@/lib/onboarding';
 
 type Paso = 'perfil' | 'moneda' | 'cliente' | 'calculando' | 'resultado';
 const ORDEN: Paso[] = ['perfil', 'moneda', 'cliente', 'calculando', 'resultado'];
@@ -25,7 +25,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     const e = leerEstado();
     if (e.perfil) setPerfil(e.perfil);
-    if (e.moneda) setMoneda(e.moneda);
+    setMoneda(e.moneda ?? monedaSugerida());
     // Si ya respondió perfil+moneda (ej. volvió desde /paywall a corregir su
     // cliente), saltar directo al paso donde puede corregir — no repetir preguntas
     // ya respondidas.

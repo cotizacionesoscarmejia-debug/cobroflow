@@ -320,7 +320,7 @@ export default function DashboardPage() {
                 <div className="mt-3 h-[180px] w-full">
                   {serieMes.length > 1 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={serieMes} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
+                      <AreaChart data={serieMes} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
                         <defs>
                           <linearGradient id="cobrosGradiente" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />

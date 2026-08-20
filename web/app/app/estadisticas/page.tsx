@@ -87,7 +87,7 @@ export default function EstadisticasPage() {
             <p className="text-[12px] text-[var(--text-secondary)]">Últimos 6 meses, en {monedaPrincipal}</p>
             <div className="mt-4 h-[220px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={serieMensual} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
+                <BarChart data={serieMensual} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
                   <CartesianGrid vertical={false} stroke="color-mix(in oklab, var(--text-tertiary) 14%, transparent)" />
                   <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={44} />
@@ -194,7 +194,7 @@ export default function EstadisticasPage() {
                 </div>
                 <div className="mt-3 h-[180px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={proyeccion} margin={{ top: 8, right: 4, bottom: 0, left: -20 }}>
+                    <BarChart data={proyeccion} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
                       <CartesianGrid vertical={false} stroke="color-mix(in oklab, var(--text-tertiary) 14%, transparent)" />
                       <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={44} />

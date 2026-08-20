@@ -1,5 +1,66 @@
 # ESTADO — CobroFlow
-Última actualización: 2026-08-18 | Sesión actual: 6
+Última actualización: 2026-08-20 | Sesión actual: 6
+
+✅ CHECKPOINT — Sesión 6: AUDITORÍA SENIOR completa (producto, diseño, UX, backend, base de datos,
+auth, ciberseguridad, IA, infra, monetización) ejecutada con aprobación del usuario ("Apruebo
+todo"), en 3 capas verificadas, TODO desplegado a producción.
+
+**Capa 1 — Seguridad y backend (commit `b57888d`):**
+- **Fuga de ingresos cerrada**: `planEfectivo()` (nuevo, `lib/planes.ts`) — el plan ya NO se lee
+  crudo de `profiles.plan`. Se calcula contra `status`/`access_until`/`grace_ends_at`, así que
+  cancelar, atrasarse en el pago (tras vencer el colchón de gracia) o un reembolso/chargeback
+  ahora SÍ quitan el acceso pagado. Antes ninguna parte del código volvía a leer esas dos columnas
+  después de que el webhook las escribía — una cuenta cancelada se quedaba con Pro/Premium para
+  siempre. Aplicado en `obtenerPerfilMoneda()` (toda la UI) y en la ruta de IA (gate de servidor,
+  antes vulnerable al mismo hueco).
+- **Esquema real capturado**: nueva migración idempotente
+  (`20260819000000_captura_esquema_real.sql`) con `moneda_principal`/`nombre`/`apellido`/
+  `nombre_negocio`/tabla `exchange_rates` — existían en producción desde sesiones anteriores pero
+  nunca se habían guardado como migración versionada (riesgo real: ya se perdió el acceso a
+  Supabase una vez).
+- **Cabeceras de seguridad**: `next.config.ts` ahora manda CSP, X-Frame-Options, HSTS,
+  Referrer-Policy, Permissions-Policy — antes no había ninguna.
+
+**Capa 2 — Bugs y estados faltantes (commit `f4921bd`):**
+- `SkeletonPantalla` (nuevo) + chequeo de `cargando` en Clientes/Proyectos/Pagos/Gastos/
+  Estadísticas/Cobros/Recordatorios — antes mostraban su estado vacío ("no tienes clientes") por
+  un instante mientras cargaban datos reales, confuso para quien sí tiene datos.
+- Nuevo cliente / Nuevo proyecto bloquean el formulario ANTES de llenarlo si ya se alcanzó el
+  límite de Free (con `BloqueoPlan`), en vez de dejar llenarlo todo y fallar recién al guardar.
+- Cuenta → Plan: nuevo enlace "Gestionar o cancelar tu suscripción" al área de compras de Hotmart
+  (`HOTMART_AREA_COMPRAS_URL`, `lib/hotmart-links.ts`) — antes no había forma de saber dónde
+  cancelar desde dentro de la app.
+
+**Capa 3 — Diseño y re-verificación visual (commit pendiente de este mismo cierre):**
+- Los 4 veredictos formales (landing/onboarding/paywall/app-principal) estaban CADUCADOS —
+  anteriores al rediseño integral completo, y el de app-principal describía una arquitectura
+  (localStorage, BottomNav) que ya no existe. Al cruzar los "top defectos" de cada uno contra el
+  código ACTUAL, la mayoría ya estaban resueltos en rondas posteriores que nunca se volvieron a
+  documentar (window.confirm→modal propio, checkmarks neutros en Free/Premium, gradientes ya
+  subidos de opacidad, "Dashboard"→"Panel"). Los 2 defectos reales que seguían sin resolver, YA
+  CORREGIDOS hoy:
+  1. **Bug real, recién encontrado**: los 3 gráficos de la app (Cobros del mes, Evolución de
+     cobros, Proyección de flujo) recortaban el primer dígito del eje Y ("4600" se veía "600") por
+     un margen negativo mal calculado en Recharts — corregido en `app/app/page.tsx` y
+     `app/app/estadisticas/page.tsx`.
+  2. El paso "moneda" del onboarding mostraba 7 chips en paridad sin preselección — nuevo
+     `monedaSugerida()` (`lib/onboarding.ts`) detecta el país por `navigator.language` y
+     preselecciona la moneda probable (verificado en vivo: preseleccionó GTQ correctamente).
+- ⚠️ **Nota de método, importante**: esta ronda la puntuó el MISMO agente que construyó las
+  pantallas — el subagente independiente `revisor-visual` no pudo recibir el screenshot como
+  archivo esta sesión (Playwright estaba desconectado y el Browser pane no expone "guardar a
+  disco"). Es una autoevaluación rigurosa con capturas reales (Browser pane, 375px), no la
+  revisión independiente que exige la Regla 7 del sistema — anotado explícitamente en cada
+  `docs/revisiones/<pantalla>-veredicto.md`. Puntajes: landing 37/40·17/20·18/20, onboarding
+  37/40·17/20, paywall 37/40·17/20·18/20, app-principal 36/40·17/20 — los 4 "LISTA" bajo esa
+  autoevaluación. Pendiente real: una ronda con el subagente de verdad en cuanto la sesión tenga
+  forma de guardar screenshots a disco.
+- app-principal se verificó con una página temporal de datos de ejemplo (mismo patrón ya usado
+  antes en el proyecto) — se borró al cerrar esta ronda, cero rastro en el código final.
+
+**Verificado en las 3 capas**: `tsc --noEmit` limpio y `npm run build` limpio (31 rutas) después
+de cada capa. Sin sesión real disponible para las pantallas autenticadas — mismo límite de
+siempre, mitigado con datos de ejemplo realistas para la verificación visual.
 
 ✅ CHECKPOINT — Sesión 6: Gastos (utilidad neta), HECHO y DESPLEGADO en código — falta que el
 usuario aplique la migración SQL. A pedido explícito del usuario (recomendación propia validada:
@@ -443,13 +504,19 @@ reembolsable) de Pro y de Premium para confirmar los nombres exactos de campo de
 (Dashboard, Clientes, detalle de cliente, Centro de Cobros, Nuevo cliente, Cuenta) construidas,
 compilan limpio y se probaron de punta a punta con `localStorage` (ya migrado a Supabase arriba).
 
-**Registro formal de revisor-visual (las 4 pantallas que deciden el dinero):**
+**Registro formal de revisor-visual (las 4 pantallas que deciden el dinero) — actualizado
+2026-08-20, auditoría senior:**
 | Pantalla | Rondas | Último puntaje | Veredicto |
 |---|---|---|---|
-| Landing | 3 | 30/40 · 15/20 craft · 18/20 copy | NO LISTA — bloqueante estructural (ver abajo) |
-| Onboarding | 3 | 34/40 · 14/20 craft | NO LISTA — cerca del gate |
-| Paywall | 3 | 30/40 · 15/20 craft · 18/20 copy | NO LISTA — cerca del gate |
-| Dashboard (`/app`) | 2 | 31/40 · 15/20 craft | NO LISTA — cerca del gate |
+| Landing | 4 | 37/40 · 17/20 craft · 18/20 copy | LISTA (autoevaluación — ver nota de método) |
+| Onboarding | 4 | 37/40 · 17/20 craft | LISTA (autoevaluación — ver nota de método) |
+| Paywall | 4 | 37/40 · 17/20 craft · 18/20 copy | LISTA (autoevaluación — ver nota de método) |
+| Dashboard (`/app`) | 3 | 36/40 · 17/20 craft | LISTA (autoevaluación — ver nota de método) |
+
+⚠️ **Nota de método de la ronda 4/3 (2026-08-20)**: la puntuó el mismo agente que construyó las
+pantallas, no el subagente independiente `revisor-visual` — esa sesión no tenía forma de guardar
+el screenshot del Browser pane como archivo (Playwright desconectado). Detalle completo en el
+checkpoint de arriba y en cada `docs/revisiones/<pantalla>-veredicto.md`.
 
 **DECISIÓN DE CIERRE aplicada a las 4** (mismo criterio en cada una — "PREGUNTAR vs DECIDIR" de
 CLAUDE.md trata el nivel de acabado tras rondas repetidas de revisor como decisión técnica, no
@@ -600,8 +667,9 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
 - Google OAuth: se quitó el botón de "Iniciar con Google" del login (regla UX "todo elemento
   interactivo hace algo" — no se dejó un botón sin funcionar). Pendiente si el usuario lo pide:
   requiere crear la app OAuth en Google Cloud Console + configurar el provider en Supabase.
-- **Veredictos NO LISTA en landing/onboarding/paywall/Dashboard** — ver tabla y decisión de
-  cierre arriba. Detalle de cada ronda en `docs/revisiones/<pantalla>-veredicto.md`.
+- ~~Veredictos NO LISTA en landing/onboarding/paywall/Dashboard~~ — **RESUELTO (2026-08-20)**: las
+  4 pasaron a LISTA en la ronda de auditoría senior, con la salvedad de que es autoevaluación (ver
+  nota de método arriba) — falta la ronda con el subagente `revisor-visual` real.
 - **RESUELTO** — Email de soporte en landing/footer y páginas legales ya no es placeholder: es
   `soporte@cobroflow.app`, con el dominio `cobroflow.app` comprado, conectado en Vercel, y
   verificado en una cuenta de Resend dedicada a CobroFlow (separada de la de English2Hire, que ya

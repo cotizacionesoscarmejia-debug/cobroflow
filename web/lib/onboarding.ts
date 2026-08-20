@@ -63,6 +63,30 @@ export function simboloMoneda(moneda?: string): string {
   return SIMBOLOS_MONEDA[moneda ?? 'USD'] ?? '$';
 }
 
+// Preselección de moneda por región del navegador (auditoría, hallazgo del
+// paso "moneda" del onboarding: 7 chips en paridad sin ninguna preselección
+// violaba el límite de ≤4 opciones simultáneas sin ayuda). Es solo una
+// SUGERENCIA visual — la persona sigue pudiendo tocar cualquier otra moneda,
+// nunca se avanza de paso solo por la preselección.
+const MONEDA_POR_PAIS: Record<string, (typeof MONEDAS)[number]> = {
+  MX: 'MXN',
+  CO: 'COP',
+  AR: 'ARS',
+  PE: 'PEN',
+  CL: 'CLP',
+  GT: 'GTQ',
+};
+
+export function monedaSugerida(): (typeof MONEDAS)[number] {
+  if (typeof navigator === 'undefined') return 'USD';
+  const idiomas = navigator.languages && navigator.languages.length > 0 ? navigator.languages : [navigator.language];
+  for (const idioma of idiomas) {
+    const pais = idioma?.split('-')[1]?.toUpperCase();
+    if (pais && MONEDA_POR_PAIS[pais]) return MONEDA_POR_PAIS[pais];
+  }
+  return 'USD';
+}
+
 export const PERFILES = [
   'Freelancer',
   'Profesional independiente',
