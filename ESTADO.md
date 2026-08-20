@@ -1,6 +1,134 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-20 | Sesión actual: 6
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 CERTIFICACIÓN PRE-LANZAMIENTO (48) — VEREDICTO: **NO APTO** (aún no cobrar a un usuario real)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**CERTIFICADO: ~50/100** — VENTA 10/20 · FUNNEL 12/20 · PRODUCTO 10/20 · CONFIANZA 6/15 ·
+VELOCIDAD 3/10 · RETENCIÓN 9/15. Puntaje bajo por diseño de la propia regla del certificado
+("lo que no se midió puntúa 0"): mucho de lo construido es real y funciona, pero varias
+verificaciones independientes (revisor-visual real, Lighthouse, prueba de compra real) nunca se
+hicieron — así que no se acreditan aunque el código detrás sea sólido.
+
+**EL BLOQUEANTE #1, de lejos** (item 5, PAGO): el campo `data.purchase.offer.code` que usa el
+webhook para decidir si una compra es Pro o Premium **nunca se verificó contra una compra real**
+de Hotmart — sigue siendo una suposición documentada desde que se conectó Hotmart. Si el nombre
+real del campo es distinto, CADA compra real fallaría en activar el plan (el webhook la rechazaría
+con 400 "plan no reconocido" — no se pierde el dinero ya cobrado por Hotmart, pero el comprador no
+recibe su plan y el dueño tiene que activarlo a mano cada vez, insostenible con más de un puñado
+de ventas). Esto NO se puede verificar sin una compra real — pendiente del usuario, ver abajo.
+
+**4 bugs reales encontrados y CORREGIDOS hoy** (código en `main`, local — ver abajo qué falta
+desplegar/aplicar):
+1. **`ai_calls` nunca lograba insertar nada** (RLS sin política de insert + el código usaba el
+   cliente normal, no el admin) — el costo de IA del item #6 del panel de expertos NUNCA se
+   registró en la práctica hasta este fix. `app/api/ai/analizar-negocio/route.ts` ahora inserta
+   con `createAdminClient()`.
+2. **El límite del plan Free en la base de datos usaba el plan CRUDO, no el efectivo** — un
+   usuario cancelado/reembolsado/con chargeback (que ya no tiene acceso pagado según
+   `planEfectivo()` del lado de la app) podía seguir creando clientes/proyectos SIN LÍMITE en la
+   base de datos, porque el trigger `valida_limite_free()` nunca revisaba `status`/`access_until`/
+   `grace_ends_at`, solo `profiles.plan` (que a propósito nunca vuelve a 'free' solo). Nueva
+   función SQL `plan_efectivo()` que replica la misma lógica de `lib/planes.ts`, usada ahora por
+   el trigger. Migración: `20260821000003_fix_limite_free_plan_efectivo.sql` — **PENDIENTE que el
+   usuario la corra en Supabase** (ver Pendientes del usuario).
+3. **El límite de "Free = una sola moneda" nunca se implementó de verdad** — ESTADO.md documentaba
+   (Fase 1, Multimoneda) que ya existía (`limite_free_moneda`, y el frontend en
+   `app/app/clientes/nuevo/page.tsx` YA sabe mostrar el upsell para ese error exacto), pero ningún
+   migration la escribía nunca. Un Free podía cargar clientes en varias monedas sin restricción.
+   Agregado en la MISMA migración del punto 2.
+4. **Sin circuit-breaker de costo de IA** — agregado kill-switch por variable de entorno
+   (`AI_ANALISIS_DESACTIVADO=true`, sin redeploy de código) + tope global de 200 análisis/día
+   (además del tope de 10/mes por usuario que ya existía) en `app/api/ai/analizar-negocio/route.ts`.
+
+**1 problema de performance real encontrado y corregido hoy**: el Hero de la landing cargaba
+`captura-dashboard.png` de **1.17MB sin optimizar** (con `<img>` plano, sin `next/image`) — el
+LCP (velocidad de carga percibida) en un celular LATAM promedio iba a ser malo. Cambiadas las 6
+imágenes de la landing (logo, hero, los 4 frames de "La app por dentro") a `next/image`, que
+Vercel sirve automáticamente optimizado (WebP/AVIF, tamaño real, sin que el usuario note nada
+distinto). **No hay medición real de Lighthouse antes/después** — el fix es real, pero el budget
+del `38` sigue sin verificarse con evidencia numérica (por eso VELOCIDAD solo saca 3/10).
+
+⚠️ **Hallazgo metodológico importante, con retractación honesta**: durante la auditoría encontré lo
+que parecía un bug GRAVE — el paso de resultado del onboarding mostraba "Saldo pendiente: Q0" en
+vez del monto real, en la pantalla más importante de todo el funnel (la "primera victoria"). Lo
+investigué a fondo (console.log temporal, comparado local vs. producción, valores de React
+confirmados correctos en cada paso) y encontré la causa real: `document.visibilityState` de la
+pestaña del Browser pane usada por el agente es `'hidden'` y `document.hasFocus()` es `false` —
+`requestAnimationFrame` (que usa el componente `NumeroAnimado` para el conteo 0→valor) NUNCA se
+ejecuta en una pestaña sin foco/visible, así que el número se queda congelado en 0 solo en esta
+herramienta de pruebas. Un usuario real, con su pestaña visible, ve la animación funcionar normal
+(confirmado: `valor` llega correcto — 2000 — en cada log). **NO es un bug del producto** — pero
+explica por qué esta sesión nunca pudo tomar un screenshot real (el mismo estado de pestaña oculta
+bloquea la composición de frames del navegador). Se retira el debug log agregado; no se tocó
+`NumeroAnimado`.
+
+**Los 10 puntos del checklist** (✅ ok · ⚠️ arreglar · ❌ bloqueante):
+1. Seguridad — ✅. RLS con `(select auth.uid())` en TODAS las tablas (13, verificado tabla por
+   tabla), `with check` en las políticas de escritura, webhook con firma en tiempo constante +
+   fail-secure (revienta si falta el secreto) + anti-replay (5 min) + verificado en vivo (401 real
+   contra producción), headers de seguridad completos y verificados en vivo (CSP/HSTS/X-Frame-
+   Options/nosniff/Permissions-Policy, todos presentes en `www.cobroflow.app`). IDOR mitigado por
+   diseño (RLS en cada tabla) — no probado con dos cuentas reales (no hay credenciales de prueba).
+2. Datos — ✅. Índices en todas las FKs, migraciones aditivas/seguras (`create or replace`,
+   `if not exists`), backups estándar del plan de pago de Supabase (confirmado con el usuario).
+3. Escala — ✅ con nota ⚠️. Supabase en plan de pago (confirmado con el usuario — sin riesgo de
+   pausa a los 7 días ni tope de 5GB del Free). Arquitectura vía REST/PostgREST (Supabase JS), no
+   una conexión directa a Postgres — el pooler de puerto 6543 no aplica a este patrón. ⚠️
+   `obtenerDB()` trae TODOS los clientes/proyectos/pagos del usuario sin paginar — el límite real
+   de PostgREST (~1000 filas) truncaría en SILENCIO los totales de un usuario con mucho historial.
+   Hoy con cero usuarios reales no es urgente; sí antes de que alguien lleve 1-2 años de datos.
+4. IA — ⚠️. Clave en servidor ✅, tope por usuario (10/mes) ✅, circuit-breaker global + kill-switch
+   ✅ (agregado hoy), costo medido ✅ (agregado hoy, recién arreglado el bug de inserción). Sin
+   golden-set de evals ❌ (no existe ningún test automatizado de calidad de la respuesta de la
+   IA). Sin guardrails explícitos de moderación/anti-inyección — riesgo bajo porque a Claude solo
+   le llega un JSON ya calculado por el código, nunca texto libre de otro usuario.
+5. Pago — ❌ BLOQUEANTE (ver arriba). Idempotencia ✅ (dedupe real vía `processed_events`,
+   verificado en el código), manejo de past_due/dunning ✅ (banner + 3 correos), pero CERO compra
+   real de prueba desde que se conectó Hotmart — el campo del payload que decide el plan sigue sin
+   confirmar.
+6. Legal — ✅. Privacidad/Términos/Reembolsos/Aviso de IA reescritos esta sesión, coherentes entre
+   sí y con la landing, verificados en vivo en producción (las 4 URLs resuelven, sin 404). Borrado
+   de cuenta es manual (por correo) — aceptable para el tamaño actual del negocio, anotado en el
+   manual del dueño.
+7. Economía — ⚠️ (estimado, no medido). Costo de IA estimado ~$0.10-0.20/usuario/mes (~1% del
+   precio de Premium) — pero la tabla `ai_calls` recién empieza a registrar de verdad (el bug de
+   inserción se acaba de corregir), así que hoy hay CERO datos reales acumulados. Revisar con
+   datos de verdad dentro de 2-4 semanas de uso.
+8. Operación — ❌. Sin Sentry ni ningún monitoreo de errores (confirmado: no está en
+   `package.json`) — hoy solo te enteras de un error si un usuario te escribe. Sin status page.
+   Canal de soporte visible ✅ (`soporte@cobroflow.app`). Rollback: el mecanismo de Vercel
+   (Promote to Production) existe y está documentado en `MANUAL-DEL-DUEÑO.md` (nuevo), pero nunca
+   se probó en vivo.
+9. Producto enriquecido — ⚠️. Las 4 pantallas del dinero tienen datos reales, sin pantallas vacías,
+   con jerarquía visual corregida hoy (Panel principal) — pero sin el gate doble real del
+   subagente `revisor-visual` independiente (mismo límite técnico de siempre, ahora explicado
+   arriba: la pestaña del agente nunca está "visible" para el navegador).
+10. Rigor de entrega — parcial. Auto-QA real hecho hoy (recorrido completo encarnando al avatar:
+    landing → onboarding → primer cliente → resultado, con datos reales, en producción Y local).
+    Circuit-breaker de IA ✅ (nuevo). `MANUAL-DEL-DUEÑO.md` ✅ (nuevo, en la raíz del repo).
+    Invariantes de dinero revisadas y 2 corregidas (arriba). Performance: encontrado y corregido
+    el problema real, sin medición Lighthouse. Sin golden-set de evals de IA.
+
+**Verificado**: `tsc --noEmit` limpio y `npm run build` limpio (33 rutas) después de cada bloque de
+fixes. Auto-QA real contra producción y contra local (Browser pane) — no solo lectura de código.
+
+⚠️ **Pendientes del usuario, en orden de importancia:**
+1. **Hacer UNA compra real de Pro y UNA de Premium** (reembolsables después) — es la ÚNICA forma
+   de confirmar que el webhook activa el plan de verdad. Sin esto, no se puede subir el veredicto
+   de NO APTO a APTO con honestidad, sin importar cuánto código se revise.
+2. ✅ **Migración `20260821000003_fix_limite_free_plan_efectivo.sql` — aplicada por el usuario**
+   (confirmado: "Ya corrí el código de SQL"). Corrige los bugs #2 y #3 de arriba.
+3. **DNS de correo (SPF/DKIM/DMARC) — sigue sin existir**, confirmado de nuevo hoy con una consulta
+   DNS real (no solo el panel). Mientras no esté, los correos de "pago confirmado"/dunning pueden
+   no llegar o caer en spam — mismo pendiente ya anotado antes en esta sesión, repetido porque
+   sigue sin resolverse.
+4. Considerar instalar Sentry (o similar) antes de tener más de un puñado de usuarios reales — sin
+   esto, los errores en producción son invisibles hasta que alguien se queja.
+5. (Cuando el usuario apruebe) Subir a GitHub/desplegar los 4 fixes + el manual del dueño — hoy
+   solo existen en el código local de esta sesión.
+
 ✅ CHECKPOINT — Sesión 6: PANEL DE 4 EXPERTOS (crítica sin piedad, contexto limpio) ejecutado y
 los 10 hallazgos aprobados por el usuario ("Ya revisé los 10 de la tabla... Adelante"). Puntajes:
 copy 14/20, craft 15/20, conversión (paywall) 5/10, retención 3/10, negocio 6/10 — veredicto vivió
@@ -34,6 +162,7 @@ solo en el chat, nunca se guardó a archivo (se documenta aquí ahora).
    una fila por análisis con `tokens_entrada`/`tokens_salida`/`costo_estimado_usd` (precio por
    modelo en `PRECIOS_USD_POR_MILLON`, fallback al precio de Sonnet si el modelo no está en la
    lista). Base para comparar el costo real de IA contra el precio de Premium ($14.99).
+   ✅ **Migración aplicada por el usuario en Supabase** — confirmado ("Listo").
 7. **"Garantía de Cero Riesgo" no garantizaba nada** → renombrada a "Sin compromiso"
    (`app/page.tsx`, prop `nombre` de `<Garantia>`) — la condición (cancela cuando quieras) ya era
    honesta, solo el nombre prometía de más.

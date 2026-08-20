@@ -8,6 +8,7 @@
 // screenshots reales los toma la IA al cerrar la app (paso obligatorio de 19 §5).
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { motion, useReducedMotion } from 'motion/react';
 import { CtaButton, Kicker, SectionShell, useReveal, VIEWPORT_ONCE } from './ui';
 import { MarkedCopy, warnCopy, warnRango } from './MarkedCopy';
@@ -105,12 +106,11 @@ export function AppPorDentro({
                   style={{ borderColor: 'color-mix(in oklab, var(--text-primary) 90%, var(--accent))' }}
                 >
                   {f.src ? (
-                    /* Si el proyecto usa next/image, cambiar por <Image> — <img> mantiene el kit portable */
-                    <img
+                    <Image
                       src={f.src}
                       alt={f.alt ?? f.label}
-                      width={250}
-                      height={542}
+                      width={1086}
+                      height={1448}
                       loading="lazy"
                       className="h-full w-full object-cover"
                     />

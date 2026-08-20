@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { type Cliente, type Proyecto, type Pago, type TasaCambio } from '@/lib/app-data';
 import { construirResumenNegocio } from '@/lib/ai-negocio';
 import { planEfectivo, type Plan } from '@/lib/planes';
@@ -18,6 +19,14 @@ export const runtime = 'nodejs';
 
 const LIMITE_ANALISIS_MES = 10;
 const AI_MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
+
+// Circuit-breaker de costo (certificación pre-lanzamiento, punto 10): kill-switch
+// instantáneo por variable de entorno (sin redeploy) + tope global diario muy por
+// encima del uso esperado, para frenar un bug o un abuso antes de que se convierta
+// en una factura sorpresa. El tope POR USUARIO (10/mes) ya existía; esto agrega la
+// segunda capa que faltaba.
+const AI_KILL_SWITCH = process.env.AI_ANALISIS_DESACTIVADO === 'true';
+const LIMITE_GLOBAL_DIA = 200;
 
 // Precio por millón de tokens (entrada/salida en USD) — para estimar el costo
 // real de cada llamada y poder compararlo contra el precio de Premium. Si el
@@ -142,6 +151,10 @@ export async function GET() {
 }
 
 export async function POST() {
+  if (AI_KILL_SWITCH) {
+    return NextResponse.json({ error: 'servicio_pausado' }, { status: 503 });
+  }
+
   const supabase = await createClient();
   const { user, plan } = await usuarioYPlan(supabase);
   if (!user) return NextResponse.json({ error: 'sin_sesion' }, { status: 401 });
@@ -149,6 +162,20 @@ export async function POST() {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'servicio_no_configurado' }, { status: 503 });
+  }
+
+  // Cuenta GLOBAL (todos los usuarios) — hace falta el cliente admin: el cliente
+  // normal está protegido por RLS y solo vería las filas del propio usuario.
+  const admin = createAdminClient();
+  const inicioDia = new Date();
+  inicioDia.setHours(0, 0, 0, 0);
+  const { count: usadosHoyGlobal } = await admin
+    .from('ai_analysis')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', inicioDia.toISOString());
+  if ((usadosHoyGlobal ?? 0) >= LIMITE_GLOBAL_DIA) {
+    console.error('circuit-breaker de IA activado: tope global diario alcanzado', { usadosHoyGlobal });
+    return NextResponse.json({ error: 'limite_global_alcanzado' }, { status: 503 });
   }
 
   const inicioMes = new Date();
@@ -235,8 +262,10 @@ export async function POST() {
   }
 
   // Costo medido de esta llamada (panel de expertos, item #6) — best-effort:
-  // si falla el log, no debe tumbar una respuesta que ya está lista.
-  await supabase.from('ai_calls').insert({
+  // si falla el log, no debe tumbar una respuesta que ya está lista. Cliente
+  // ADMIN a propósito: ai_calls no tiene política de insert para el usuario
+  // (nunca debe poder escribir su propio registro de costo/facturación).
+  await admin.from('ai_calls').insert({
     user_id: user.id,
     modelo: AI_MODEL,
     tokens_entrada: tokensEntradaTotal,

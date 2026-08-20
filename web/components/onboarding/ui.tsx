@@ -5,6 +5,7 @@
 // marca, mismo brand kit, cero valores propios.
 
 import { useEffect, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ChevronLeft, Check } from 'lucide-react';
 
@@ -25,7 +26,7 @@ export function Marca({ confirmarSalida = false }: { confirmarSalida?: boolean }
         }}
         className="inline-flex items-center gap-2 text-[15px] font-semibold text-[var(--text-primary)]"
       >
-        <img src="/logo.png" alt="" aria-hidden="true" className="size-6 object-contain" />
+        <Image src="/logo.png" alt="" aria-hidden="true" width={24} height={24} className="size-6 object-contain" />
         CobroFlow
       </a>
       <AnimatePresence>

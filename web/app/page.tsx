@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { CircleAlert, Clock, MessageCircle, Search } from 'lucide-react';
 import { Hero } from '@/components/landing/Hero';
 import { Problema } from '@/components/landing/Problema';
@@ -24,7 +25,7 @@ export default function LandingPage() {
       {/* 1. HERO */}
       <Hero
         appName="CobroFlow"
-        logo={<img src="/logo.png" alt="" aria-hidden="true" className="size-7 object-contain" />}
+        logo={<Image src="/logo.png" alt="" aria-hidden="true" width={28} height={28} className="size-7 object-contain" />}
         loginHref="/login"
         loginLabel="Iniciar sesión"
         h1Marked="Sabes quién te debe, [acento]sin buscar en WhatsApp[/acento]."
@@ -33,7 +34,16 @@ export default function LandingPage() {
         ctaHref={CTA_HREF}
         socialProof={<span>Sin tarjeta de crédito para empezar</span>}
         visualPlaceholderSugerencia="captura del Panel principal con el saldo cobrado, lo pendiente y los clientes atrasados"
-        visual={<img src="/captura-dashboard.png" alt="Panel principal de CobroFlow: cobrado este mes, pendiente por cobrar y clientes atrasados" className="w-full" />}
+        visual={
+          <Image
+            src="/captura-dashboard.png"
+            alt="Panel principal de CobroFlow: cobrado este mes, pendiente por cobrar y clientes atrasados"
+            width={1586}
+            height={992}
+            priority
+            className="h-auto w-full"
+          />
+        }
       />
 
       {/* 2. PROBLEMA */}
