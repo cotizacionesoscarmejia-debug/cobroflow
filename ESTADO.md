@@ -81,6 +81,24 @@ mismo patrón ya usado en la auditoría de esta sesión). **No probado end-to-en
 (ver Pendientes del usuario) — el webhook y el cron nunca se han disparado contra Resend de
 verdad, porque `RESEND_API_KEY` todavía no existe en producción.
 
+**Dónde vive cada plantilla** (para tocar copy sin buscar): `lib/emails/transaccionales.ts`
+(pago confirmado, compra sin vincular), `lib/emails/carrito.ts`, `lib/emails/dunning.ts`,
+`lib/emails/retencion.ts` (cancelación + win-back), `lib/emails/activacion.ts`,
+`lib/emails/nurturing.ts`. El diseño compartido (colores, estructura HTML) vive en
+`lib/emails/layout.ts` — un cambio ahí afecta a los ~17 correos a la vez.
+
+**Qué mirar en la operación mensual (una vez haya volumen real)**:
+- Tasa de apertura y clic del correo de "pago confirmado" (A1) — si baja de ~90% de entrega, es
+  señal de un problema de deliverability, no de copy.
+- Cuántos `checkout_intentos` con plan todavía `free` reciben los 3 correos de carrito y cuántos
+  terminan pagando después — ese % es la tasa de recuperación real del carrito.
+- Cuántos `past_due` se recuperan (vuelven a `active`) vs cuántos terminan en `free` — el
+  benchmark de la doctrina (58) es >40-50% de recuperación.
+- Cuántos `no_profile_match` llegan al correo de soporte — si son frecuentes, vale la pena
+  revisar por qué la gente paga con un correo distinto al de su cuenta.
+- `email_suppression` y quejas — si crecen, pausar `FROM_MKT` (nurturing/win-back) y dejar que el
+  `FROM_TX` (que nunca debe fallar) se recupere solo, antes de retomar marketing (regla de 46).
+
 ✅ CHECKPOINT — Sesión 6: AUDITORÍA LEGAL completa (contra `47-LEGAL-FISCAL-Y-PRIVACIDAD.md`),
 desplegada a producción. Responsable declarado: Oscar Mejía, persona física, Guatemala — contacto
 legal `soporte@cobroflow.app` (mismo correo de siempre, sin agregar un canal nuevo).
