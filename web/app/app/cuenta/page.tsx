@@ -18,7 +18,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
+import { hotmartCheckoutUrl, HOTMART_AREA_COMPRAS_URL } from '@/lib/hotmart-links';
 import { useAppData } from '@/components/app/AppDataProvider';
 import { actualizarNombre, actualizarNegocio, nombreParaMostrar, inicialesParaMostrar, obtenerDB, obtenerTasas } from '@/lib/app-data';
 import { generarReportePDF, type PeriodoReporte } from '@/lib/pdf-report';
@@ -287,7 +287,22 @@ export default function CuentaPage() {
               </a>
             </div>
           )}
+          {plan !== 'free' && (
+            <a
+              href={HOTMART_AREA_COMPRAS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex h-11 items-center justify-center rounded-[var(--radius-button)] bg-[var(--surface-2)] px-4 text-[13px] font-semibold text-[var(--text-primary)]"
+            >
+              Gestionar o cancelar tu suscripción
+            </a>
+          )}
         </div>
+        {plan !== 'free' && (
+          <p className="mt-2 text-[11.5px] text-[var(--text-tertiary)]">
+            Tu pago lo procesa Hotmart — ahí mismo cambias tu tarjeta o cancelas cuando quieras, con el correo que usaste al comprar.
+          </p>
+        )}
       </Seccion>
 
       <Seccion titulo="Reportes y análisis">

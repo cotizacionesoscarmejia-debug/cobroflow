@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronDown } from 'lucide-react';
 import { CtaFunnel } from '@/components/onboarding/ui';
 import { useAppData } from '@/components/app/AppDataProvider';
+import { BloqueoPlan } from '@/components/app/BloqueoPlan';
 import { agregarProyecto } from '@/lib/app-data';
+import { capacidadesDe } from '@/lib/planes';
 import { simboloMoneda } from '@/lib/onboarding';
 
 function hoyISO(offsetDias = 0): string {
@@ -17,7 +19,8 @@ function hoyISO(offsetDias = 0): string {
 
 export default function NuevoProyectoPage() {
   const router = useRouter();
-  const { db, recargar } = useAppData();
+  const { db, plan, perfil, recargar } = useAppData();
+  const capacidades = capacidadesDe(plan);
   const [clienteId, setClienteId] = useState(db.clientes[0]?.id ?? '');
   const [nombre, setNombre] = useState('');
   const [total, setTotal] = useState('');
@@ -72,6 +75,27 @@ export default function NuevoProyectoPage() {
         <Link href="/app/clientes/nuevo" className="mt-3 inline-block text-[14px] font-semibold text-[var(--accent)]">
           + Agregar cliente
         </Link>
+      </div>
+    );
+  }
+
+  // Bloqueo PROACTIVO (auditoría, hallazgo importante #5) — igual que en
+  // Nuevo cliente: si ya está en el límite, no se muestra el formulario.
+  if (capacidades.limiteProyectos !== null && db.proyectos.length >= capacidades.limiteProyectos) {
+    return (
+      <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10">
+        <button type="button" onClick={() => router.back()} aria-label="Atrás" className="flex size-11 items-center justify-center rounded-full text-[var(--text-secondary)]">
+          <ChevronLeft size={22} aria-hidden="true" />
+        </button>
+        <h1 className="mt-4 text-[24px] font-bold leading-[1.15] text-[var(--text-primary)] [font-family:var(--font-display)]">Nuevo proyecto</h1>
+        <div className="mt-6">
+          <BloqueoPlan
+            plan="pro"
+            titulo="Llegaste al límite de 5 proyectos de Free"
+            descripcion="Con Pro puedes tener clientes y proyectos ilimitados, sin cambiar nada de lo que ya cargaste."
+            email={perfil.email}
+          />
+        </div>
       </div>
     );
   }

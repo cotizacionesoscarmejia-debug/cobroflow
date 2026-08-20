@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Repeat, Trash2 } from 'lucide-react';
 import { BloqueoPlan } from '@/components/app/BloqueoPlan';
+import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
 import { useAppData } from '@/components/app/AppDataProvider';
 import { cobradoEsteMesPorMoneda, gastadoEsteMesPorMoneda, eliminarGasto } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
@@ -17,13 +18,15 @@ function monto(moneda: string, valor: number): string {
 }
 
 export default function GastosPage() {
-  const { db, gastos, plan, perfil, recargar } = useAppData();
+  const { db, gastos, plan, perfil, recargar, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
   const [borrando, setBorrando] = useState<string | null>(null);
 
   const cobrado = useMemo(() => cobradoEsteMesPorMoneda(db), [db]);
   const gastado = useMemo(() => gastadoEsteMesPorMoneda(gastos), [gastos]);
   const monedas = useMemo(() => Array.from(new Set([...Object.keys(cobrado), ...Object.keys(gastado)])), [cobrado, gastado]);
+
+  if (cargando) return <SkeletonPantalla />;
 
   async function borrar(id: string) {
     setBorrando(id);

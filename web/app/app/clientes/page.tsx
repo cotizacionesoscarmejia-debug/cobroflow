@@ -6,6 +6,7 @@ import { Plus, Search, Download } from 'lucide-react';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
+import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
 import { useAppData } from '@/components/app/AppDataProvider';
 import { proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
@@ -24,7 +25,7 @@ interface ClienteResumen {
 const ORDEN_URGENCIA: Record<string, number> = { atrasado: 0, vence_hoy: 1, proximo: 2, al_dia: 3, pagado: 4 };
 
 export default function ClientesPage() {
-  const { db, plan } = useAppData();
+  const { db, plan, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
   const [buscar, setBuscar] = useState('');
 
@@ -56,6 +57,8 @@ export default function ClientesPage() {
   const filtrados = buscar.trim()
     ? resumen.filter((c) => c.nombre.toLowerCase().includes(buscar.trim().toLowerCase()))
     : resumen;
+
+  if (cargando) return <SkeletonPantalla />;
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 md:max-w-none md:px-8">

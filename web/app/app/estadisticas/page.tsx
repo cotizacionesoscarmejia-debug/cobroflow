@@ -11,6 +11,7 @@ import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGri
 import { Sparkles, FileDown, ChevronRight, TrendingUp, Receipt } from 'lucide-react';
 import { BloqueoPlan } from '@/components/app/BloqueoPlan';
 import { MetaMensual } from '@/components/app/MetaMensual';
+import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
 import { useAppData } from '@/components/app/AppDataProvider';
 import {
   proyectosConDatos,
@@ -28,7 +29,7 @@ function monto(moneda: string, valor: number): string {
 }
 
 export default function EstadisticasPage() {
-  const { db, plan, monedaPrincipal, perfil, gastos } = useAppData();
+  const { db, plan, monedaPrincipal, perfil, gastos, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
 
   const proyectos = useMemo(() => proyectosConDatos(db), [db]);
@@ -62,6 +63,8 @@ export default function EstadisticasPage() {
     })),
     [db, monedaPrincipal]
   );
+
+  if (cargando) return <SkeletonPantalla />;
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10 md:max-w-none md:px-8 md:pb-12">

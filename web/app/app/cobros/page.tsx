@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Search, MessageCircle, ChevronRight, Filter } from 'lucide-react';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
+import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
 import { useAppData } from '@/components/app/AppDataProvider';
 import { proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
@@ -49,7 +50,7 @@ function coincideFiltro(p: ProyectoConDatos, filtro: Filtro): boolean {
 }
 
 export default function CentroDeCobrosPage() {
-  const { db, plan } = useAppData();
+  const { db, plan, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [buscar, setBuscar] = useState('');
@@ -67,6 +68,8 @@ export default function CentroDeCobrosPage() {
       return p.cliente.nombre.toLowerCase().includes(t) || p.nombre.toLowerCase().includes(t);
     })
     .sort((a, b) => a.fechaPromesa.localeCompare(b.fechaPromesa));
+
+  if (cargando) return <SkeletonPantalla />;
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10 md:max-w-none md:px-8 md:pb-12">

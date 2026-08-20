@@ -12,6 +12,7 @@ import { useAppData } from '@/components/app/AppDataProvider';
 import { pagosConDatos } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
 import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
+import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
 import { simboloMoneda } from '@/lib/onboarding';
 import { exportarPagosCSV } from '@/lib/csv-export';
 
@@ -20,7 +21,7 @@ function monto(moneda: string, valor: number): string {
 }
 
 export default function PagosPage() {
-  const { db, plan } = useAppData();
+  const { db, plan, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
   const [buscar, setBuscar] = useState('');
 
@@ -30,6 +31,8 @@ export default function PagosPage() {
         (p) => p.cliente.nombre.toLowerCase().includes(buscar.trim().toLowerCase()) || p.proyecto.nombre.toLowerCase().includes(buscar.trim().toLowerCase())
       )
     : pagos;
+
+  if (cargando) return <SkeletonPantalla />;
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10 md:max-w-none md:px-8 md:pb-12">

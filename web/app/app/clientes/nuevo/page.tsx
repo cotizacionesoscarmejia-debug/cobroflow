@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronDown } from 'lucide-react';
 import { CtaFunnel } from '@/components/onboarding/ui';
 import { agregarClienteYProyecto } from '@/lib/app-data';
 import { useAppData } from '@/components/app/AppDataProvider';
+import { BloqueoPlan } from '@/components/app/BloqueoPlan';
+import { capacidadesDe } from '@/lib/planes';
 import { MONEDAS } from '@/lib/onboarding';
 
 function hoyISO(offsetDias = 0): string {
@@ -17,7 +19,8 @@ function hoyISO(offsetDias = 0): string {
 
 export default function NuevoClientePage() {
   const router = useRouter();
-  const { recargar } = useAppData();
+  const { db, plan, perfil, recargar } = useAppData();
+  const capacidades = capacidadesDe(plan);
   const [nombre, setNombre] = useState('');
   const [proyecto, setProyecto] = useState('');
   const [moneda, setMoneda] = useState<string>('USD');
@@ -76,6 +79,12 @@ export default function NuevoClientePage() {
     }
   }
 
+  // Bloqueo PROACTIVO (auditoría, hallazgo importante #5): antes se dejaba
+  // llenar todo el formulario y recién al guardar aparecía el error del
+  // servidor. Ahora, si ya está en el límite, ni siquiera se muestra el
+  // formulario — se explica el límite de una vez con la opción de mejorar.
+  const alcanzoLimite = capacidades.limiteClientes !== null && db.clientes.length >= capacidades.limiteClientes;
+
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10">
       <button
@@ -90,72 +99,86 @@ export default function NuevoClientePage() {
       <h1 className="mt-4 text-[24px] font-bold leading-[1.15] text-[var(--text-primary)] [font-family:var(--font-display)]">
         Nuevo cliente
       </h1>
-      <p className="mt-1 text-[14px] text-[var(--text-secondary)]">Registra el proyecto y el Radar calcula el saldo solo.</p>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          enviar();
-        }}
-      >
-        <div className="mt-6 flex flex-col gap-4">
-          <Campo label="Nombre del cliente" placeholder="Ej. Clínica Nova" value={nombre} onChange={setNombre} autoFocus />
-          <Campo label="Proyecto (opcional)" placeholder="Ej. Página web profesional" value={proyecto} onChange={setProyecto} />
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-[var(--text-secondary)]">Moneda de este cliente</span>
-            <div className="relative">
-              <select
-                value={moneda}
-                onChange={(e) => setMoneda(e.target.value)}
-                className="h-14 w-full appearance-none rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 pr-11 text-[16px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
-              >
-                {MONEDAS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={18}
-                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-                aria-hidden="true"
-              />
+      {alcanzoLimite ? (
+        <div className="mt-6">
+          <BloqueoPlan
+            plan="pro"
+            titulo="Llegaste al límite de 3 clientes de Free"
+            descripcion="Con Pro puedes tener clientes y proyectos ilimitados, sin cambiar nada de lo que ya cargaste."
+            email={perfil.email}
+          />
+        </div>
+      ) : (
+        <>
+          <p className="mt-1 text-[14px] text-[var(--text-secondary)]">Registra el proyecto y el Radar calcula el saldo solo.</p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              enviar();
+            }}
+          >
+            <div className="mt-6 flex flex-col gap-4">
+              <Campo label="Nombre del cliente" placeholder="Ej. Clínica Nova" value={nombre} onChange={setNombre} autoFocus />
+              <Campo label="Proyecto (opcional)" placeholder="Ej. Página web profesional" value={proyecto} onChange={setProyecto} />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">Moneda de este cliente</span>
+                <div className="relative">
+                  <select
+                    value={moneda}
+                    onChange={(e) => setMoneda(e.target.value)}
+                    className="h-14 w-full appearance-none rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 pr-11 text-[16px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+                  >
+                    {MONEDAS.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={18}
+                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                    aria-hidden="true"
+                  />
+                </div>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label={`Precio total (${moneda})`} placeholder="900" value={total} onChange={setTotal} numerico />
+                <Campo label="Ya te pagó" placeholder="450" value={anticipo} onChange={setAnticipo} numerico />
+              </div>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">Fecha en la que debería pagar el resto</span>
+                <input
+                  type="date"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="h-14 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 text-[15px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
+                />
+              </label>
             </div>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <Campo label={`Precio total (${moneda})`} placeholder="900" value={total} onChange={setTotal} numerico />
-            <Campo label="Ya te pagó" placeholder="450" value={anticipo} onChange={setAnticipo} numerico />
-          </div>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-[var(--text-secondary)]">Fecha en la que debería pagar el resto</span>
-            <input
-              type="date"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              className="h-14 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--surface)] px-4 text-[15px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
-            />
-          </label>
-        </div>
 
-        {error && (
-          <div className="mt-4">
-            <p role="alert" className="text-[13px] font-medium text-[var(--status-error)]">
-              {error}
-            </p>
-            {requierePro && (
-              <Link href="/app/cuenta" className="mt-2 inline-block text-[13px] font-semibold text-[var(--accent)]">
-                Actualizar a Pro
-              </Link>
+            {error && (
+              <div className="mt-4">
+                <p role="alert" className="text-[13px] font-medium text-[var(--status-error)]">
+                  {error}
+                </p>
+                {requierePro && (
+                  <Link href="/app/cuenta" className="mt-2 inline-block text-[13px] font-semibold text-[var(--accent)]">
+                    Actualizar a Pro
+                  </Link>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        <div className="mt-8">
-          <CtaFunnel type="submit" disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar cliente'}
-          </CtaFunnel>
-        </div>
-      </form>
+            <div className="mt-8">
+              <CtaFunnel type="submit" disabled={guardando}>
+                {guardando ? 'Guardando…' : 'Guardar cliente'}
+              </CtaFunnel>
+            </div>
+          </form>
+        </>
+      )}
     </div>
   );
 }

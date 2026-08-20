@@ -10,6 +10,7 @@ import { Copy, Check, MessageCircle } from 'lucide-react';
 import { Perforacion } from '@/components/landing/ui';
 import { EstadoBadge } from '@/components/app/EstadoBadge';
 import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
+import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
 import { useAppData } from '@/components/app/AppDataProvider';
 import { proyectosConDatos, diasAtraso, type ProyectoConDatos } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
@@ -43,7 +44,7 @@ function mensajePorTono(p: ProyectoConDatos, tono: Tono): string {
 }
 
 export default function RecordatoriosPage() {
-  const { db, plan } = useAppData();
+  const { db, plan, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [tonos, setTonos] = useState<Record<string, Tono>>({});
@@ -55,6 +56,8 @@ export default function RecordatoriosPage() {
         .sort((a, b) => ORDEN_URGENCIA[a.estado] - ORDEN_URGENCIA[b.estado]),
     [db]
   );
+
+  if (cargando) return <SkeletonPantalla />;
 
   async function copiar(id: string, texto: string) {
     try {
