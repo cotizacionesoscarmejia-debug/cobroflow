@@ -11,8 +11,12 @@ const OFFER_CODE = { pro: 's6j82uzz', premium: 'avoatd7z' } as const;
  * no tiene su propio panel de facturación (Hotmart es quien cobra), así que
  * este es el único lugar real donde alguien puede cancelar (auditoría,
  * hallazgo importante #6 — antes Cuenta no lo mencionaba ni enlazaba).
+ * URL verificada contra la Central de Ayuda oficial de Hotmart (no adivinada
+ * — la primera versión, "purchases.hotmart.com", no existe y el usuario lo
+ * confirmó con un DNS_PROBE_FINISHED_NXDOMAIN real):
+ * https://help.hotmart.com/es/article/115002183968/-como-cancelar-mi-suscripcion-
  */
-export const HOTMART_AREA_COMPRAS_URL = 'https://purchases.hotmart.com';
+export const HOTMART_AREA_COMPRAS_URL = 'https://consumer.hotmart.com';
 
 /**
  * Arma el link de pago de un plan, con el correo y el id del usuario ya
