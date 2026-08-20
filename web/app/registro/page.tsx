@@ -28,6 +28,7 @@ function RegistroForm() {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const plan = searchParams.get('plan');
   const nombrePlan = plan ? NOMBRE_PLAN[plan] : undefined;
   const [estado, setEstado] = useState<EstadoOnboarding>({});
@@ -45,7 +46,8 @@ function RegistroForm() {
     apellido.trim().length > 0 &&
     email.includes('@') &&
     password.length >= LARGO_MINIMO &&
-    password === confirmarPassword;
+    password === confirmarPassword &&
+    aceptaTerminos;
 
   async function crearCuenta() {
     if (!listoParaEnviar) return;
@@ -197,6 +199,20 @@ function RegistroForm() {
               </p>
             )}
 
+            <label className="flex items-start gap-3 pt-1">
+              <input
+                type="checkbox"
+                checked={aceptaTerminos}
+                onChange={(e) => setAceptaTerminos(e.target.checked)}
+                className="mt-0.5 size-5 shrink-0 accent-[var(--accent)]"
+              />
+              <span className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                Acepto los <a href="/terminos" className="underline" target="_blank" rel="noopener noreferrer">Términos</a> y
+                autorizo el tratamiento de mis datos según la{' '}
+                <a href="/privacidad" className="underline" target="_blank" rel="noopener noreferrer">Política de privacidad</a>.
+              </span>
+            </label>
+
             {error && (
               <p role="alert" className="text-[13px] font-medium text-[var(--status-error)]">
                 {error}
@@ -214,12 +230,6 @@ function RegistroForm() {
           <a href="/login" className="font-semibold text-[var(--accent)]">
             Inicia sesión
           </a>
-        </p>
-
-        <p className="mt-5 text-center text-[12.5px] leading-relaxed text-[var(--text-tertiary)]">
-          Al continuar aceptas los{' '}
-          <a href="/terminos" className="underline">Términos</a> y la{' '}
-          <a href="/privacidad" className="underline">Política de privacidad</a>.
         </p>
       </div>
     </div>

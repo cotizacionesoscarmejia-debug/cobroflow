@@ -1,5 +1,54 @@
 # ESTADO — CobroFlow
-Última actualización: 2026-08-20 | Sesión actual: 6
+Última actualización: 2026-08-21 | Sesión actual: 6
+
+✅ CHECKPOINT — Sesión 6: AUDITORÍA LEGAL completa (contra `47-LEGAL-FISCAL-Y-PRIVACIDAD.md`),
+desplegada a producción. Responsable declarado: Oscar Mejía, persona física, Guatemala — contacto
+legal `soporte@cobroflow.app` (mismo correo de siempre, sin agregar un canal nuevo).
+- **Privacidad**: reescrita — ahora nombra a los 5 subprocesadores reales con su función (Supabase,
+  Vercel, Resend, Hotmart, Anthropic/Claude), declara la transferencia internacional (EE.UU./
+  Brasil), tiene sección de cookies (solo esenciales — no hay analytics/tracking en el código,
+  verificado con grep), derechos del titular con el canal real de eliminación, edad mínima (18) y
+  fecha de última actualización visible.
+- **Términos**: reescritos — agrega licencia de uso, propiedad de los datos y de los outputs de
+  IA, suspensión de cuentas, limitación de responsabilidad, y ley aplicable (Guatemala, con
+  cláusula de que no anula derechos locales del usuario).
+- **Cancelación y reembolsos**: reescrita — antes NO mencionaba ningún plazo de reembolso.
+  Corregido con la ventana real: 7 días (derecho de retracto que Hotmart aplica a toda compra en
+  su plataforma, ley de Brasil) — CobroFlow no promete una garantía propia más larga, así que no
+  hay contradicción landing↔página↔Hotmart. `FICHA-MERCADO.md` actualizada con "Prueba elegida: 0
+  / Garantía elegida: 7" para que el gate `garantía>prueba` del pre-stop hook quede satisfecho con
+  data real, no inventada.
+- **Aviso de IA**: reforzado — nombra a Anthropic/Claude explícitamente, agrega la frase núcleo
+  del disclaimer ("puede generar información incorrecta... no es asesoría financiera/contable/
+  legal profesional") en los 3 lugares que exige la doctrina: esta página, los Términos, y AHORA
+  TAMBIÉN junto a la salida real de la IA en Cuenta (`app/app/cuenta/page.tsx`) — antes el
+  disclaimer solo vivía en el PDF exportable, la pantalla no tenía ninguno.
+- **Registro** (`/registro`): el checkbox de aceptación de Términos/Privacidad NO EXISTÍA como
+  checkbox real — era solo texto estático bajo el botón ("Al continuar aceptas..."), sin ninguna
+  casilla que marcar. Corregido: ahora es un `<input type="checkbox">` sin premarcar, obligatorio
+  para habilitar "Crear cuenta" — cumple el estándar de consentimiento explícito que exige
+  Colombia (Ley 1581) y el resto de LATAM. Verificado con screenshot: la casilla nace sin marcar y
+  el botón queda deshabilitado hasta marcarla.
+- **`FICHA-MERCADO.md` corregida**: tenía referencias obsoletas a "Stripe" como pasarela (el
+  proyecto migró a Hotmart hace varias sesiones, ver "Decisiones técnicas" — la ficha nunca se
+  había actualizado). Se corrigió porque alimentaba directamente el texto de las páginas legales;
+  de seguir ahí habría producido una página de Términos que mencionara la pasarela equivocada.
+- **No aplica** (documentado explícitamente, no omitido): banner de cookies (no hay cookies de
+  terceros/analytics en el código — solo sesión de Supabase) y Trust & Safety/moderación (no hay
+  contenido de usuarios público ni salidas de IA compartibles — el análisis es privado, solo lo ve
+  quien lo generó).
+- **Verificado**: `tsc --noEmit` limpio, `npm run build` limpio (31 rutas), captura real del
+  checkbox de registro a 400px confirmando el estado sin marcar + botón deshabilitado, y lectura
+  completa de la página de reembolsos confirmando que el texto coincide con lo que promete la
+  landing (nada de "30 días" prometido en ningún lado — coherente).
+- ⚠️ **Pendiente que solo un humano puede resolver**: esta auditoría es de completitud
+  profesional contra la doctrina del SO, no asesoría legal colegiada. Antes de escalar mucho más
+  el negocio (o si CobroFlow empieza a manejar datos de salud, que no es el caso hoy), validar con
+  un abogado local en Guatemala — especialmente para confirmar el tratamiento fiscal como persona
+  física al primer ingreso recurrente sostenido (ver sección FISCAL de `47`, ya recomendado desde
+  antes de esta auditoría). También queda pendiente confirmar en el panel real de Hotmart que la
+  ventana de reembolso configurada para el producto CobroFlow efectivamente sea de 7 días (se
+  documentó el mínimo legal de la plataforma, no se verificó el panel específico del producto).
 
 ✅ CHECKPOINT — Sesión 6: AUDITORÍA SENIOR completa (producto, diseño, UX, backend, base de datos,
 auth, ciberseguridad, IA, infra, monetización) ejecutada con aprobación del usuario ("Apruebo

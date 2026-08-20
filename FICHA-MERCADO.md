@@ -4,11 +4,13 @@
 - Nicho/categoría exacta: control de cuentas por cobrar / seguimiento de pagos pendientes para
   freelancers y microempresas de servicios (NO facturación electrónica fiscal, NO contabilidad).
 - País(es) donde se va a vender: LATAM, multi-país (sin foco fiscal por país, ver multi-moneda
-  en ESTADO.md) · Moneda de cobro de la propia suscripción: USD (Stripe).
+  en ESTADO.md) · Moneda de cobro de la propia suscripción: USD (Hotmart).
 - Fecha de investigación: 2026-08-15 · **Vence el:** 2027-02-15 (6 meses).
-- Pasarela/plataforma de venta elegida: **Stripe** (decisión explícita del usuario — desvío del
-  default Hotmart del SO, ver ESTADO.md). Protocolo de checkout real de `18` no aplica 1:1;
-  se retoma la verificación de medios de pago cuando se conecte Stripe en Sesión 6.
+- Pasarela/plataforma de venta elegida: **Hotmart** — corrección 2026-08-21: el plan original era
+  Stripe, pero en Sesión 6 se descubrió que Stripe no abre cuenta de vendedor en Guatemala (país
+  del usuario) y se migró a Hotmart (ver ESTADO.md, "Decisiones técnicas"). Este campo había
+  quedado desactualizado; se corrige aquí porque alimenta directamente el texto de las páginas
+  legales (auditoría legal 2026-08-21).
 
 ## 1. PRECIO — contra qué se compara el tuyo
 - Competencia internacional (Bonsai/HoneyBook, EE.UU., invoicing+contratos para freelance):
@@ -36,20 +38,26 @@
   (adquisición), no bloquea la construcción.
 
 ## 3. CÓMO PAGA ESTE MERCADO
-- Medios de pago del checkout real: por definir cuando se conecte Stripe en Sesión 6 (tarjeta es
-  el método nativo de Stripe; en varios países LATAM Stripe ya soporta tarjetas locales).
+- Medios de pago del checkout real: los que ofrece Hotmart por país (tarjeta, y métodos locales
+  según el mercado — ej. PIX en Brasil).
 - Penetración de tarjeta de crédito: variable por país LATAM, dato NO ENCONTRADO agregado — se
   revisa por país si se detecta fricción real de checkout.
 - **Consecuencia para el producto:** un segmento de freelancers LATAM sin tarjeta internacional
   podría quedar excluido del pago — mitigado por el plan Free sin tarjeta (pueden usar la app
-  igual) y revisable más adelante (Stripe soporta más métodos locales en algunos países).
+  igual) y revisable más adelante (Hotmart soporta métodos locales según el país).
 
 ## 4. PRUEBA Y GARANTÍA
 - Modelo: **freemium (plan Free permanente), NO trial de tiempo limitado** — el usuario definió
-  Free como el "probar antes de pagar", sin fecha de vencimiento. No aplica la regla
-  garantía>prueba de `18` (no hay prueba cronometrada ni garantía de reembolso prometida).
-- Si más adelante se agrega una garantía de reembolso explícita en el copy de ventas, esta ficha
-  se actualiza ANTES de publicarla (regla fail-closed de CLAUDE.md).
+  Free como el "probar antes de pagar", sin fecha de vencimiento.
+- **Prueba elegida: 0** días (no hay trial cronometrado — el Free permanente cumple ese rol).
+- **Garantía elegida: 7** días — CobroFlow no promete una garantía propia de "devolución de
+  dinero" más allá de la que Hotmart ya aplica a toda compra en su plataforma (derecho de
+  retracto, ley de protección al consumidor de Brasil). Documentado así en
+  `/cancelacion-reembolsos` (auditoría legal 2026-08-21). 7 > 0, cumple la regla garantía>prueba
+  de `18`.
+- Si más adelante se agrega una garantía de reembolso PROPIA más larga en el copy de ventas, esta
+  ficha se actualiza ANTES de publicarla (regla fail-closed de CLAUDE.md) — y debe confirmarse que
+  el plazo prometido coincide con lo configurado para el producto en el panel de Hotmart.
 
 ## 5. CONVERSIÓN ESPERABLE
 - Conversión típica freemium→pago de SaaS de utilidad B2B/prosumer: NO ENCONTRADO con fuente

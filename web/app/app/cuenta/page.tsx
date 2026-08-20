@@ -432,6 +432,17 @@ export default function CuentaPage() {
                 </div>
               )}
 
+              {!cargandoAnalisis && analisis && (
+                <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+                  Esto es orientación generada por IA, puede equivocarse — no es asesoría financiera
+                  ni contable profesional.{' '}
+                  <a href="/aviso-ia" className="underline" target="_blank" rel="noopener noreferrer">
+                    Más detalles
+                  </a>
+                  .
+                </p>
+              )}
+
               <p className="mt-4 text-[11px] text-[var(--text-tertiary)]">
                 {usadosEsteMes} de {limiteMes} análisis usados este mes
               </p>
