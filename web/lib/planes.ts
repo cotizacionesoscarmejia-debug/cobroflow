@@ -82,6 +82,37 @@ export function capacidadesDe(plan: Plan): Capacidades {
 
 export const NOMBRE_PLAN: Record<Plan, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' };
 
+/**
+ * El plan REAL vigente hoy — nunca confiar solo en la columna `plan` de
+ * `profiles`. El webhook de Hotmart (apply_hotmart_event) guarda `plan` como
+ * el último plan pagado, pero deja la EXPIRACIÓN en `access_until` (cancelado
+ * — sigue con acceso hasta el fin del ciclo ya pagado) y `grace_ends_at`
+ * (pago atrasado — colchón de dunning). Nada más en el proyecto volvía a leer
+ * esas dos columnas, así que una cuenta cancelada o con reembolso/chargeback
+ * se quedaba con el plan pagado PARA SIEMPRE (auditoría, hallazgo crítico #1).
+ * Esta función es la ÚNICA fuente de verdad del plan efectivo — todo lugar
+ * que lea `profiles.plan` para dar acceso (UI o servidor) debe pasar por acá.
+ */
+export function planEfectivo(perfil: {
+  plan: Plan;
+  status: string;
+  accessUntil: string | null;
+  graceEndsAt: string | null;
+}): Plan {
+  const ahora = Date.now();
+  switch (perfil.status) {
+    case 'active':
+      return perfil.plan;
+    case 'past_due':
+      return perfil.graceEndsAt && new Date(perfil.graceEndsAt).getTime() > ahora ? perfil.plan : 'free';
+    case 'cancelled':
+      return perfil.accessUntil && new Date(perfil.accessUntil).getTime() > ahora ? perfil.plan : 'free';
+    default:
+      // 'free' | 'expired' | 'refunded' | 'chargeback' | cualquier otro: sin acceso pagado.
+      return 'free';
+  }
+}
+
 /** A qué plan hay que subir para desbloquear una capacidad — para el CTA "Mejorar a X". */
 export function planQueDesbloquea(capacidad: keyof Capacidades): 'pro' | 'premium' {
   if (CAPACIDADES.pro[capacidad]) return 'pro';

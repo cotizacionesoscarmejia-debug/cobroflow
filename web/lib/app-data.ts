@@ -4,6 +4,7 @@
 
 import { createClient } from './supabase/client';
 import { leerEstado as leerOnboarding, simboloMoneda } from './onboarding';
+import { planEfectivo, type Plan } from './planes';
 
 export interface Cliente {
   id: string;
@@ -454,10 +455,20 @@ export async function obtenerPerfilMoneda(): Promise<PerfilMoneda> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { plan: 'free', monedaPrincipal: 'USD' };
-  const { data } = await supabase.from('profiles').select('plan, moneda_principal').eq('id', user.id).single();
+  const { data } = await supabase
+    .from('profiles')
+    .select('plan, status, access_until, grace_ends_at, moneda_principal')
+    .eq('id', user.id)
+    .single();
+  if (!data) return { plan: 'free', monedaPrincipal: 'USD' };
   return {
-    plan: (data?.plan as 'free' | 'pro' | 'premium') ?? 'free',
-    monedaPrincipal: data?.moneda_principal ?? 'USD',
+    plan: planEfectivo({
+      plan: (data.plan as Plan) ?? 'free',
+      status: data.status ?? 'free',
+      accessUntil: data.access_until,
+      graceEndsAt: data.grace_ends_at,
+    }),
+    monedaPrincipal: data.moneda_principal ?? 'USD',
   };
 }
 

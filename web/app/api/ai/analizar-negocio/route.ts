@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { type Cliente, type Proyecto, type Pago, type TasaCambio } from '@/lib/app-data';
 import { construirResumenNegocio } from '@/lib/ai-negocio';
+import { planEfectivo, type Plan } from '@/lib/planes';
 
 export const runtime = 'nodejs';
 
@@ -48,9 +49,16 @@ async function usuarioYPlan(supabase: Awaited<ReturnType<typeof createClient>>) 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { user: null, plan: null as string | null };
-  const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single();
-  return { user, plan: (data?.plan as string | undefined) ?? 'free' };
+  if (!user) return { user: null, plan: null as Plan | null };
+  const { data } = await supabase.from('profiles').select('plan, status, access_until, grace_ends_at').eq('id', user.id).single();
+  if (!data) return { user, plan: 'free' as Plan };
+  const plan = planEfectivo({
+    plan: (data.plan as Plan) ?? 'free',
+    status: data.status ?? 'free',
+    accessUntil: data.access_until,
+    graceEndsAt: data.grace_ends_at,
+  });
+  return { user, plan };
 }
 
 async function obtenerDBServidor(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
