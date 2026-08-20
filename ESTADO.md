@@ -1,6 +1,86 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-21 | Sesión actual: 6
 
+✅ CHECKPOINT — Sesión 6: SISTEMA DE EMAILS completo construido (18/34/35/46/58), código desplegado
+a producción — falta que el usuario complete la configuración manual (Resend/DNS/variables) antes
+de que los correos empiecen a salir de verdad. Aprobado por el usuario ("Apruebo todo ese orden...
+incluyendo D y E").
+
+**Hallazgo de Fase 1 que cambió el plan**: verifiqué el DNS real de `cobroflow.app` (con
+`dig`/DNS-over-HTTPS de Google, no solo confiando en el panel) y NO existe ni SPF, ni DKIM, ni
+DMARC — a pesar de que el usuario creía que el dominio ya estaba verificado en Resend. **Esto
+bloquea que cualquier correo llegue de forma confiable** y es el primer paso pendiente, antes que
+nada más (ver "Pendientes del usuario" abajo).
+
+**Decisión de arquitectura clave**: CobroFlow NO usa el modelo de "enlace mágico" que asume la
+doctrina genérica de `18` — desde la Fase 3 de esta sesión el login es por contraseña y el usuario
+se registra ANTES de pagar (no al revés, vía Hotmart). Los correos transaccionales se adaptaron a
+esa realidad: confirman el pago, no entregan el acceso.
+
+**Lo que se construyó:**
+- `lib/resend-email.ts` — cliente único de Resend (`RESEND_API_KEY`), `enviarEmail()` best-effort
+  (nunca tumba el webhook si el correo falla — el pago/estado ya se aplicó antes), `yaSeEnvio()`/
+  `registrarEnvio()` sobre la tabla `email_log` (fuente de idempotencia de TODAS las secuencias por
+  cron), `estaSuprimido()`.
+- `lib/emails/` — plantillas HTML (envoltorio compartido en `layout.ts`, colores reales de
+  FICHA-ARTE.md, multipart html+text): `transaccionales.ts` (pago confirmado, compra sin vincular
+  ×2), `carrito.ts` (3), `dunning.ts` (3, adaptado a 1/3/5 — la gracia real configurada en el
+  webhook es de 5 días, no 7), `retencion.ts` (cancelación + win-back ×3), `activacion.ts` (D1/D3/
+  D7), `nurturing.ts` (Free→Pro ×3, adaptado: no hay lead magnet separado, nutre a quien ya se
+  registró gratis).
+- **A1 + A1b (el más crítico)**: el webhook de Hotmart (`route.ts`) ahora dispara el correo de pago
+  confirmado, y — el hallazgo más importante de la auditoría de este flujo — cuando un pago no se
+  puede vincular a ninguna cuenta (`no_profile_match`, el ticket #1 real de este modelo), YA NO
+  queda en silencio en un log: se le manda un correo al comprador con el camino para reconciliar Y
+  una alerta a `soporte@cobroflow.app` con los datos para resolverlo a mano. Antes de esto, un pago
+  real con correo distinto al de la cuenta se perdía sin que nadie se enterara.
+- **B — Carrito abandonado, fuente de datos propia**: en vez de adivinar el nombre de un evento de
+  webhook de Hotmart sin confirmar, se creó `/api/ir-a-hotmart` — un redirect que registra el clic
+  al checkout (tabla `checkout_intentos`) ANTES de mandar a Hotmart. Todos los links de "Mejorar a
+  Pro/Premium" de la app (`BloqueoPlan.tsx`, Cuenta, `/confirmar`) ahora pasan por ahí. Dato 100%
+  real, no una suposición.
+- **C1 — Dunning**: día 1 lo dispara el webhook al momento (`past_due`); días 3 y 5 los manda el
+  cron. Banner in-app no bloqueante en el Panel principal cuando `status === 'past_due'`
+  (`lib/dunning-banner.ts`, separado de las plantillas de correo para no llevarse HTML al bundle
+  del navegador).
+- **C2 — Cancelación + win-back**: cancelación la dispara el webhook; win-back 30/60/90 lo maneja
+  el cron sobre `profiles.cancelled_at` (columna nueva — antes no existía un timestamp real de
+  cuándo se canceló, solo `access_until`, que mide otra cosa).
+- **D — Activación D1/D3/D7** y **E — Nurturing Free→Pro (3 correos)**: ambos por cron, sobre
+  `first_paid_at` y `created_at` respectivamente.
+- **Un solo cron diario** (`app/api/cron/emails`, protegido con `CRON_SECRET`, programado en
+  `vercel.json` a las 14:00 UTC / 8am Guatemala) avanza las 5 secuencias basadas en tiempo
+  (carrito/dunning/win-back/activación/nurturing) — se agruparon en una sola corrida por los
+  límites de cron del plan gratuito de Vercel y para tener un solo log diario de qué se mandó.
+- Separación transaccional/marketing (46): `FROM_TX = acceso@tx.cobroflow.app` (pago, dunning,
+  cancelación, carrito, activación) vs `FROM_MKT = hola@news.cobroflow.app` (win-back, nurturing) —
+  mismo `RESEND_API_KEY`, pero dominios de envío distintos para que una queja de marketing nunca
+  contamine la reputación del correo que sí o sí debe llegar.
+- Tabla `email_suppression` + columna `profiles.marketing_opt_out` — el cron filtra marketing
+  contra ambas antes de enviar (transaccional se manda igual, es servicio, no marketing).
+- Migraciones: `20260821000000_sistema_emails.sql` (`email_log`, `email_suppression`,
+  `checkout_intentos`, `profiles.cancelled_at`, `profiles.marketing_opt_out`) +
+  `20260821000001_cancelled_at_en_apply_hotmart_event.sql` (la RPC ahora fija `cancelled_at`).
+- Privacidad actualizada: sección nueva "Correos sobre tu plan y ofertas" declarando el nurturing/
+  win-back con su opt-out ("responde 'quitar'").
+- `/login` suma el enlace "¿Pagaste y no ves tu plan activo?" (mailto con asunto pre-llenado) —
+  la ruta de rescate de acceso de 18, adaptada (sin magic link).
+
+⚠️ **Deviación consciente de la doctrina, anotada con honestidad**: `34`/`46` piden **opt-in**
+explícito (idealmente doble) para marketing (nurturing, win-back) — esta implementación usa
+**opt-out** (correo transparente + "responde quitar" + registrado en `email_suppression`/
+`marketing_opt_out`), apoyada en que es una relación de cliente ya existente (no un lead frío) y
+está declarada en Privacidad. Es defendible pero no es el estándar más alto que pide el SO —
+si se quiere blindar del todo, se puede sumar un checkbox aparte de "sí quiero tips y ofertas" en
+`/registro`, separado del de Términos/Privacidad.
+
+**Verificado**: `tsc --noEmit` limpio, `npm run build` limpio (33 rutas). Verificación visual real:
+capturas de 3 plantillas de correo (pago confirmado, dunning, carrito) y del banner de pago
+atrasado en el Panel principal, con una página temporal de datos de ejemplo (borrada al cerrar,
+mismo patrón ya usado en la auditoría de esta sesión). **No probado end-to-end con un pago real**
+(ver Pendientes del usuario) — el webhook y el cron nunca se han disparado contra Resend de
+verdad, porque `RESEND_API_KEY` todavía no existe en producción.
+
 ✅ CHECKPOINT — Sesión 6: AUDITORÍA LEGAL completa (contra `47-LEGAL-FISCAL-Y-PRIVACIDAD.md`),
 desplegada a producción. Responsable declarado: Oscar Mejía, persona física, Guatemala — contacto
 legal `soporte@cobroflow.app` (mismo correo de siempre, sin agregar un canal nuevo).
@@ -734,11 +814,25 @@ CONSTRUIDAS (ver tabla de veredictos arriba). Proyecto Next.js en `cobroflow/web
   reusar el selector de 11 monedas del onboarding — homologar en Sesión 6.
 
 ## Pendientes del usuario (acciones que el usuario debe hacer)
-- [ ] Hacer UNA compra real de Pro y UNA de Premium (puede reembolsarlas después) para confirmar
-  que el webhook sube el plan correcto — el botón "Enviar prueba" de Hotmart no sirve para esto
+- [ ] **Sistema de emails — DNS y Resend (bloqueante, confirmado con DNS real, no con el panel)**:
+  1. En Resend → Domains → Add Domain: agregar `tx.cobroflow.app` (transaccional) y
+     `news.cobroflow.app` (marketing) como DOS dominios separados.
+  2. Pegar los registros SPF y DKIM exactos que Resend entrega para cada uno, en el DNS del
+     dominio (Vercel → tu proyecto → Domains, o donde administres el DNS de `cobroflow.app`).
+  3. Agregar un registro DMARC en `_dmarc.cobroflow.app` (Resend no lo genera solo):
+     `v=DMARC1; p=none; rua=mailto:soporte@cobroflow.app`.
+  4. Esperar a que Resend marque los dos dominios como "Verified" antes de mandar nada en serio.
+  5. Copiar el `RESEND_API_KEY` a las variables de entorno de Vercel.
+  6. Generar un valor aleatorio largo para `CRON_SECRET` y copiarlo también a Vercel — Vercel Cron
+     lo manda solo en cada llamada automática, no hay que configurarlo aparte.
+- [ ] Hacer UNA compra real de Pro y UNA de Premium (puede reembolsarlas después) para la prueba
+  end-to-end completa: confirmar que el webhook sube el plan Y que el correo de "pago confirmado"
+  llega a la bandeja principal (no a spam) — el botón "Enviar prueba" de Hotmart no sirve para esto
   (usa un producto de prueba genérico, no el real).
-- [ ] Verificar el dominio `cobroflow.app` en Resend antes de vender — hoy solo entrega a la
-  dirección con la que te registraste en Resend.
+- [ ] Verificar en el panel de Hotmart (Herramientas → Webhook) los eventos de cancelación/pago
+  atrasado disponibles para tu cuenta — el mapeo actual (`SUBSCRIPTION_CANCELLATION`,
+  `PURCHASE_DELAYED`) sigue sin confirmar contra un payload real de tu cuenta (pendiente desde
+  antes de esta sesión, ver `lib/membership-fsm.ts`).
 
 ## Notas para la próxima sesión
 - Proyecto 100% separado de English2Hire — carpeta propia `cobroflow/`, su propio ESTADO.md,

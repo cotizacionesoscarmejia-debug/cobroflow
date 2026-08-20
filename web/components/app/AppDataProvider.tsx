@@ -29,6 +29,9 @@ import type { Plan } from '@/lib/planes';
 interface AppDataContextValue {
   db: DB;
   plan: Plan;
+  /** Estado crudo de la suscripción — solo para mostrar el banner de pago
+   * atrasado; nunca para dar/quitar acceso (eso ya lo resuelve `plan`). */
+  status: string;
   monedaPrincipal: string;
   tasas: TasaCambio[];
   perfil: Perfil;
@@ -51,6 +54,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [db, setDb] = useState<DB>(DB_VACIA);
   const [plan, setPlan] = useState<Plan>('free');
+  const [status, setStatus] = useState('free');
   const [monedaPrincipal, setMonedaPrincipal] = useState('USD');
   const [tasas, setTasas] = useState<TasaCambio[]>([]);
   const [perfil, setPerfil] = useState<Perfil>(PERFIL_VACIO);
@@ -81,6 +85,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     ]);
     setDb(dbData);
     setPlan(perfilMoneda.plan);
+    setStatus(perfilMoneda.status);
     setMonedaPrincipal(perfilMoneda.monedaPrincipal);
     setTasas(tasasData);
     setPerfil(perfilData);
@@ -106,7 +111,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppDataContext.Provider
-      value={{ db, plan, monedaPrincipal, tasas, perfil, userId, metaMensual, gastos, cargando, recargar: cargar, tourVisible, cerrarTour, reabrirTour }}
+      value={{ db, plan, status, monedaPrincipal, tasas, perfil, userId, metaMensual, gastos, cargando, recargar: cargar, tourVisible, cerrarTour, reabrirTour }}
     >
       {children}
     </AppDataContext.Provider>

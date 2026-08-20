@@ -83,8 +83,9 @@
    tu negocio; los saldos y atrasos siempre son matemática exacta, nunca una adivinanza → FAQ
 4. "Es caro / no lo voy a usar" → respuesta: empiezas gratis sin tarjeta, y Pro cuesta menos que
    un café a la semana → Oferta + FAQ
-5. "¿Es seguro dar mi tarjeta?" → respuesta: el pago lo procesa Stripe, CobroFlow nunca ve tu
-   tarjeta, cancelas cuando quieras → FAQ + microcopy bajo el CTA de pago
+5. "¿Es seguro dar mi tarjeta?" → respuesta: el pago lo procesa Hotmart, CobroFlow nunca ve tu
+   tarjeta, cancelas cuando quieras → FAQ + microcopy bajo el CTA de pago (corrección 2026-08-21:
+   la ficha decía "Stripe", desactualizado desde la migración a Hotmart de Sesión 6)
 6. "¿Esto reemplaza mi programa de facturación o contabilidad?" → respuesta: no — CobroFlow no
    hace impuestos ni facturas fiscales, es el complemento simple para saber quién te debe → FAQ
 

@@ -107,6 +107,15 @@ function LoginForm() {
           </a>
         </p>
 
+        <p className="mt-3 text-center text-[12.5px] text-[var(--text-secondary)]">
+          <a
+            href="mailto:soporte@cobroflow.app?subject=Pagu%C3%A9%20y%20no%20veo%20mi%20plan%20activo"
+            className="underline"
+          >
+            ¿Pagaste y no ves tu plan activo?
+          </a>
+        </p>
+
         <p className="mt-5 text-center text-[12.5px] leading-relaxed text-[var(--text-tertiary)]">
           Al continuar aceptas los{' '}
           <a href="/terminos" className="underline">Términos</a> y la{' '}

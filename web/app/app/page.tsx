@@ -24,6 +24,7 @@ import {
   type ProyectoConDatos,
 } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
+import { BANNER_PAST_DUE } from '@/lib/dunning-banner';
 import { simboloMoneda } from '@/lib/onboarding';
 
 const ORDEN_URGENCIA: Record<string, number> = { atrasado: 0, vence_hoy: 1, proximo: 2, al_dia: 3, pagado: 4 };
@@ -107,7 +108,7 @@ function TarjetaStat({
 }
 
 export default function DashboardPage() {
-  const { db, plan, monedaPrincipal, tasas, perfil, gastos, cargando } = useAppData();
+  const { db, plan, status, monedaPrincipal, tasas, perfil, gastos, cargando } = useAppData();
   const capacidades = capacidadesDe(plan);
 
   if (cargando) return <SkeletonDashboard />;
@@ -141,6 +142,26 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pt-6 pb-10 md:max-w-none md:px-8 md:pb-12">
+      {/* Banner de pago atrasado (58) — no bloqueante, nunca corta el acceso de golpe. */}
+      {status === 'past_due' && (
+        <motion.div
+          {...entra(0)}
+          className="mb-4 flex flex-col items-start justify-between gap-3 rounded-[var(--radius-card)] bg-[color-mix(in_oklab,var(--status-error)_10%,transparent)] p-4 sm:flex-row sm:items-center"
+        >
+          <p className="text-[13px] font-medium text-[var(--text-primary)]">
+            {BANNER_PAST_DUE.texto}
+          </p>
+          <a
+            href={BANNER_PAST_DUE.ctaHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-[var(--status-error)] px-4 text-[12.5px] font-semibold text-white"
+          >
+            {BANNER_PAST_DUE.ctaTexto}
+          </a>
+        </motion.div>
+      )}
+
       {/* Saludo — solo en móvil (el AppShell ya lo muestra en la barra superior de desktop/tablet) */}
       <motion.div {...entra(0)} className="md:hidden">
         <p className="text-[13px] text-[var(--text-secondary)]">Hola</p>

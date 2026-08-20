@@ -3,6 +3,10 @@ import crypto from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyHotmart } from '@/lib/hotmart-verify';
 import { statusForEvent, planForOfferCode } from '@/lib/membership-fsm';
+import { enviarEmail, registrarEnvio, FROM_TX } from '@/lib/resend-email';
+import { emailPagoConfirmado, emailCompraSinVincular, emailAlertaPagoSinVincular } from '@/lib/emails/transaccionales';
+import { emailCancelacion } from '@/lib/emails/retencion';
+import { emailDunning } from '@/lib/emails/dunning';
 
 // Necesitamos node:crypto y el raw body — no corre en el runtime Edge.
 export const runtime = 'nodejs';
@@ -101,6 +105,40 @@ export async function POST(req: NextRequest) {
     console.error('webhook hotmart error', { event, code: error.code });
     await admin.from('webhook_log').insert({ event_id: eventId, type: event, result: 'error' });
     return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
+
+  // 7. Correo transaccional — SOLO si aplicamos algo de verdad (nunca en
+  //    duplicados/transiciones ilegales). Best-effort: un fallo de correo
+  //    nunca debe convertir esta respuesta en un 5xx (el dinero/estado ya
+  //    se aplicó; Hotmart no debe reintentar por esto).
+  try {
+    if (data === 'applied' && newStatus === 'active' && plan && email) {
+      const tpl = emailPagoConfirmado(plan);
+      const { id } = await enviarEmail({ to: email, from: FROM_TX, subject: tpl.subject, html: tpl.html, text: tpl.text });
+      await registrarEnvio(admin, { email, template: 'pago_confirmado', resendId: id });
+    } else if (data === 'applied' && newStatus === 'cancelled' && email) {
+      const tpl = emailCancelacion();
+      const { id } = await enviarEmail({ to: email, from: FROM_TX, subject: tpl.subject, html: tpl.html, text: tpl.text });
+      await registrarEnvio(admin, { email, template: 'cancelacion', resendId: id });
+    } else if (data === 'applied' && newStatus === 'past_due' && email) {
+      const tpl = emailDunning(1);
+      const { id } = await enviarEmail({ to: email, from: FROM_TX, subject: tpl.subject, html: tpl.html, text: tpl.text });
+      await registrarEnvio(admin, { email, template: 'dunning_1', resendId: id });
+    } else if (data === 'no_profile_match') {
+      // El ticket #1 de este modelo (18): un pago real que no encontró cuenta.
+      // Avisamos a AMBOS lados — al comprador (con el camino para reconciliar)
+      // y al dueño (con los datos para hacerlo a mano) — nunca se queda en
+      // silencio dentro de un log que nadie mira.
+      if (email) {
+        const tplCliente = emailCompraSinVincular();
+        const { id } = await enviarEmail({ to: email, from: FROM_TX, subject: tplCliente.subject, html: tplCliente.html, text: tplCliente.text });
+        await registrarEnvio(admin, { email, template: 'compra_sin_vincular', resendId: id });
+      }
+      const tplDueno = emailAlertaPagoSinVincular({ email, eventType: event, productId, offerCode, subscriberCode });
+      await enviarEmail({ to: 'soporte@cobroflow.app', from: FROM_TX, subject: tplDueno.subject, html: `<pre>${tplDueno.text}</pre>`, text: tplDueno.text });
+    }
+  } catch (emailErr) {
+    console.error('webhook hotmart: fallo al enviar correo (no bloqueante)', emailErr);
   }
 
   return NextResponse.json({ received: true, result: data });

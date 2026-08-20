@@ -59,10 +59,23 @@ export default function PrivacidadPage() {
         <section>
           <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Cómo usamos tus datos</h2>
           <p className="mt-2">
-            Para hacer funcionar la app (calcular tus saldos, mostrarte tu Panel principal, mandarte
-            los correos que tú pides — confirmación de cuenta, recuperación de contraseña) y, solo si
+            Para hacer funcionar la app (calcular tus saldos, mostrarte tu Panel principal) y, solo si
             tienes el plan Premium y tú mismo lo activas, para generar el análisis de tu negocio con
-            inteligencia artificial.
+            inteligencia artificial. También los usamos para mandarte los correos que hacen parte del
+            servicio: confirmar tu cuenta, recuperar tu contraseña, confirmar un pago, avisarte si un
+            cobro falla o si tu suscripción se canceló.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Correos sobre tu plan y ofertas</h2>
+          <p className="mt-2">
+            Si usas el plan Free, te podemos escribir un par de correos con tips sobre CobroFlow o
+            sobre pasar a Pro/Premium. Si cancelas un plan pago, te escribimos para saber cómo te fue
+            y, más adelante, para avisarte si vuelves a tener novedades. Nunca son muchos ni
+            seguidos, y cada uno trae una forma clara de darte de baja (basta con responder
+            &quot;quitar&quot;) — sin afectar los correos de servicio (confirmaciones, avisos de
+            pago), que no son marketing y siempre te llegan mientras tengas cuenta activa.
           </p>
         </section>
 
@@ -83,8 +96,9 @@ export default function PrivacidadPage() {
               aplicación web que estás usando.
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">Resend</strong> — envía los correos que tú generas
-              (confirmar tu cuenta, recuperar tu contraseña).
+              <strong className="text-[var(--text-primary)]">Resend</strong> — envía todos los correos de
+              CobroFlow: confirmar tu cuenta, recuperar tu contraseña, confirmar un pago, avisos sobre
+              tu suscripción, y los correos ocasionales de producto/ofertas descritos arriba.
             </li>
             <li>
               <strong className="text-[var(--text-primary)]">Hotmart</strong> (Brasil) — procesa el pago de tu

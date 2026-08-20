@@ -18,7 +18,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { hotmartCheckoutUrl, HOTMART_AREA_COMPRAS_URL } from '@/lib/hotmart-links';
+import { HOTMART_AREA_COMPRAS_URL } from '@/lib/hotmart-links';
 import { useAppData } from '@/components/app/AppDataProvider';
 import { actualizarNombre, actualizarNegocio, nombreParaMostrar, inicialesParaMostrar, obtenerDB, obtenerTasas } from '@/lib/app-data';
 import { generarReportePDF, type PeriodoReporte } from '@/lib/pdf-report';
@@ -50,7 +50,7 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
 
 export default function CuentaPage() {
   const router = useRouter();
-  const { plan, monedaPrincipal, perfil, userId, recargar, reabrirTour } = useAppData();
+  const { plan, monedaPrincipal, perfil, recargar, reabrirTour } = useAppData();
   const capacidades = capacidadesDe(plan);
 
   const [nombreEditado, setNombreEditado] = useState('');
@@ -273,14 +273,14 @@ export default function CuentaPage() {
             <div className="mt-4 flex flex-col gap-2">
               {plan === 'free' && (
                 <a
-                  href={hotmartCheckoutUrl('pro', { email: perfil.email, userId })}
+                  href="/api/ir-a-hotmart?plan=pro"
                   className="flex h-11 items-center justify-center rounded-[var(--radius-button)] bg-[var(--accent)] px-4 text-[13px] font-semibold text-[var(--bg)]"
                 >
                   Pasar a Pro — $7.99/mes
                 </a>
               )}
               <a
-                href={hotmartCheckoutUrl('premium', { email: perfil.email, userId })}
+                href="/api/ir-a-hotmart?plan=premium"
                 className="flex h-11 items-center justify-center rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] px-4 text-[13px] font-semibold text-[var(--accent)]"
               >
                 Pasar a Premium — $14.99/mes
@@ -346,7 +346,7 @@ export default function CuentaPage() {
             </>
           ) : (
             <a
-              href={hotmartCheckoutUrl(planQueDesbloquea('canExportPDF'), { email: perfil.email, userId })}
+              href={`/api/ir-a-hotmart?plan=${planQueDesbloquea('canExportPDF')}`}
               className="mt-4 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] text-[13px] font-semibold text-[var(--accent)]"
             >
               <Lock size={14} aria-hidden="true" />
@@ -471,7 +471,7 @@ export default function CuentaPage() {
             </>
           ) : (
             <a
-              href={hotmartCheckoutUrl('premium', { email: perfil.email, userId })}
+              href="/api/ir-a-hotmart?plan=premium"
               className="mt-4 flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--accent)_45%,transparent)] text-[13px] font-semibold text-[var(--accent)]"
             >
               <Lock size={14} aria-hidden="true" />

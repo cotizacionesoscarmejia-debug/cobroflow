@@ -365,6 +365,10 @@ export interface TasaCambio {
 export interface PerfilMoneda {
   plan: 'free' | 'pro' | 'premium';
   monedaPrincipal: string;
+  /** Estado crudo de la suscripción (nunca para dar/quitar acceso — eso ya lo
+   * resuelve planEfectivo() en `plan`. Solo para mostrar el banner de pago
+   * atrasado en la UI). */
+  status: string;
 }
 
 // ── Identidad: nombre y apellido en vez del correo como identificador visual. ──
@@ -454,13 +458,13 @@ export async function obtenerPerfilMoneda(): Promise<PerfilMoneda> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { plan: 'free', monedaPrincipal: 'USD' };
+  if (!user) return { plan: 'free', monedaPrincipal: 'USD', status: 'free' };
   const { data } = await supabase
     .from('profiles')
     .select('plan, status, access_until, grace_ends_at, moneda_principal')
     .eq('id', user.id)
     .single();
-  if (!data) return { plan: 'free', monedaPrincipal: 'USD' };
+  if (!data) return { plan: 'free', monedaPrincipal: 'USD', status: 'free' };
   return {
     plan: planEfectivo({
       plan: (data.plan as Plan) ?? 'free',
@@ -469,6 +473,7 @@ export async function obtenerPerfilMoneda(): Promise<PerfilMoneda> {
       graceEndsAt: data.grace_ends_at,
     }),
     monedaPrincipal: data.moneda_principal ?? 'USD',
+    status: data.status ?? 'free',
   };
 }
 

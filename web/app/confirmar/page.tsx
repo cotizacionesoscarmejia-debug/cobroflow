@@ -6,7 +6,6 @@ import { Marca, CtaFunnel } from '@/components/onboarding/ui';
 import { createClient } from '@/lib/supabase/client';
 import { guardarEstado, leerEstado } from '@/lib/onboarding';
 import { migrarClienteDeOnboarding, actualizarNombre } from '@/lib/app-data';
-import { hotmartCheckoutUrl } from '@/lib/hotmart-links';
 
 // No se verifica el token automáticamente al cargar: Gmail/Outlook a veces
 // "escanean" el enlace del correo por seguridad y gastan el único uso antes de
@@ -37,7 +36,7 @@ function ConfirmarForm() {
     }
     setEstado('verificando');
     const supabase = createClient();
-    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
     if (error) {
       setEstado('error');
       return;
@@ -57,9 +56,11 @@ function ConfirmarForm() {
     }
 
     // Si eligió un plan pago en el paywall, lo mandamos directo al pago real de
-    // Hotmart en vez de a la app — con su correo y su id ya precargados.
+    // Hotmart en vez de a la app — vía /api/ir-a-hotmart, que registra el clic
+    // (fuente real del carrito abandonado, B/18/35) y arma el link con la
+    // sesión que se acaba de crear.
     if (planElegido === 'pro' || planElegido === 'premium') {
-      window.location.href = hotmartCheckoutUrl(planElegido, { email: data.user?.email, userId: data.user?.id });
+      window.location.href = `/api/ir-a-hotmart?plan=${planElegido}`;
       return;
     }
 
