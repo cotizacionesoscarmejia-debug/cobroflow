@@ -16,6 +16,8 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
   const { db, cargando, recargar } = useAppData();
   const [registrando, setRegistrando] = useState<string | null>(null);
   const [monto, setMonto] = useState('');
+  const [confirmando, setConfirmando] = useState(false);
+  const [errorPago, setErrorPago] = useState<string | null>(null);
 
   const proyectos = useMemo(() => proyectosConDatos(db).filter((p) => p.cliente.id === id), [db, id]);
 
@@ -36,12 +38,23 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
   const pagadoTotal = proyectos.reduce((s, p) => s + p.pagado, 0);
 
   async function confirmarPago(proyectoId: string) {
+    // Preauditoría — P0-1: sin esta guarda, un doble-tap podía registrar el
+    // mismo pago dos veces (era el único formulario de dinero sin protección).
+    if (confirmando) return;
     const montoNum = Number(monto.replace(',', '.')) || 0;
     if (montoNum <= 0) return;
-    await registrarPago({ clientes: [], proyectos: [], pagos: [] }, proyectoId, montoNum);
-    setRegistrando(null);
-    setMonto('');
-    await recargar();
+    setConfirmando(true);
+    setErrorPago(null);
+    try {
+      await registrarPago({ clientes: [], proyectos: [], pagos: [] }, proyectoId, montoNum);
+      setRegistrando(null);
+      setMonto('');
+      await recargar();
+    } catch {
+      setErrorPago('No pudimos guardar el pago. Revisa tu conexión e intenta de nuevo.');
+    } finally {
+      setConfirmando(false);
+    }
   }
 
   return (
@@ -112,22 +125,28 @@ export default function ClienteDetallePage({ params }: { params: Promise<{ id: s
             {p.saldo > 0 && (
               <div className="mt-3">
                 {registrando === p.id ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      inputMode="decimal"
-                      value={monto}
-                      onChange={(e) => setMonto(e.target.value.replace(/[^0-9.,]/g, ''))}
-                      placeholder="Monto recibido"
-                      className="h-11 flex-1 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--bg)] px-3 text-[14px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => confirmarPago(p.id)}
-                      className="flex h-11 items-center justify-center rounded-[var(--radius-button)] bg-[var(--accent)] px-4 text-[13px] font-semibold text-[var(--bg)]"
-                    >
-                      <CheckCustom />
-                    </button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        inputMode="decimal"
+                        value={monto}
+                        onChange={(e) => setMonto(e.target.value.replace(/[^0-9.,]/g, ''))}
+                        placeholder="Monto recibido"
+                        disabled={confirmando}
+                        className="h-11 flex-1 rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--bg)] px-3 text-[14px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)] disabled:opacity-60"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => confirmarPago(p.id)}
+                        disabled={confirmando}
+                        aria-label="Confirmar pago"
+                        className="flex h-11 items-center justify-center rounded-[var(--radius-button)] bg-[var(--accent)] px-4 text-[13px] font-semibold text-[var(--bg)] disabled:opacity-60"
+                      >
+                        <CheckCustom />
+                      </button>
+                    </div>
+                    {errorPago && <p className="mt-2 text-[12.5px] text-[var(--status-error)]">{errorPago}</p>}
                   </div>
                 ) : (
                   <button

@@ -7,9 +7,10 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Download } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Plus, Search, Download, Trash2 } from 'lucide-react';
 import { useAppData } from '@/components/app/AppDataProvider';
-import { pagosConDatos } from '@/lib/app-data';
+import { pagosConDatos, eliminarPago, type PagoConDatos } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
 import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
 import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
@@ -21,11 +22,25 @@ function monto(moneda: string, valor: number): string {
 }
 
 export default function PagosPage() {
-  const { db, plan, cargando } = useAppData();
+  const { db, plan, cargando, recargar } = useAppData();
   const capacidades = capacidadesDe(plan);
   const [buscar, setBuscar] = useState('');
+  const [porBorrar, setPorBorrar] = useState<PagoConDatos | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const pagos = useMemo(() => pagosConDatos(db), [db]);
+
+  async function confirmarBorrado() {
+    if (!porBorrar) return;
+    setBorrando(true);
+    try {
+      await eliminarPago(porBorrar.id);
+      await recargar();
+      setPorBorrar(null);
+    } finally {
+      setBorrando(false);
+    }
+  }
   const filtrados = buscar.trim()
     ? pagos.filter(
         (p) => p.cliente.nombre.toLowerCase().includes(buscar.trim().toLowerCase()) || p.proyecto.nombre.toLowerCase().includes(buscar.trim().toLowerCase())
@@ -90,6 +105,7 @@ export default function PagosPage() {
                   <th className="px-3 pb-0 pt-4 font-medium">Cliente</th>
                   <th className="px-3 pb-0 pt-4 font-medium">Proyecto</th>
                   <th className="px-5 pb-0 pt-4 font-medium">Monto</th>
+                  <th className="px-5 pb-0 pt-4 font-medium" />
                 </tr>
               </thead>
               <tbody>
@@ -105,6 +121,16 @@ export default function PagosPage() {
                     </td>
                     <td className="px-3 py-3 text-[var(--text-secondary)]">{p.proyecto.nombre}</td>
                     <td className="px-5 py-3 font-semibold tabular-nums text-[var(--status-success)]">+{monto(p.cliente.moneda, p.monto)}</td>
+                    <td className="px-5 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setPorBorrar(p)}
+                        aria-label="Eliminar pago"
+                        className="flex size-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:text-[var(--status-error)]"
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -113,19 +139,76 @@ export default function PagosPage() {
 
           <div className="mt-5 flex flex-col gap-2.5 md:hidden">
             {filtrados.map((p) => (
-              <Link key={p.id} href={`/app/clientes/${p.cliente.id}`} className="flex items-center justify-between rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
-                <div className="min-w-0">
+              <div key={p.id} className="flex items-center justify-between rounded-[var(--radius-card)] bg-[var(--surface)] p-4 shadow-[var(--shadow-1)]">
+                <Link href={`/app/clientes/${p.cliente.id}`} className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{p.cliente.nombre}</p>
                   <p className="truncate text-[12px] text-[var(--text-secondary)]">
                     {p.proyecto.nombre} · {new Date(p.fecha).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
                   </p>
-                </div>
+                </Link>
                 <span className="shrink-0 text-[14px] font-bold tabular-nums text-[var(--status-success)]">+{monto(p.cliente.moneda, p.monto)}</span>
-              </Link>
+                <button
+                  type="button"
+                  onClick={() => setPorBorrar(p)}
+                  aria-label="Eliminar pago"
+                  className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)]"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              </div>
             ))}
           </div>
         </>
       )}
+
+      {/* Confirmación de borrado — nunca inmediato, panel de expertos + preauditoría (P1-1/P0-2) */}
+      <AnimatePresence>
+        {porBorrar && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[color-mix(in_oklab,var(--text-primary)_45%,transparent)] sm:items-center"
+            onClick={() => !borrando && setPorBorrar(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 12, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[360px] rounded-t-[var(--radius-card)] bg-[var(--surface)] p-6 shadow-[var(--shadow-2)] sm:rounded-[var(--radius-card)]"
+            >
+              <h2 className="text-[18px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">
+                ¿Eliminar este pago?
+              </h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-secondary)]">
+                {porBorrar.cliente.nombre} — {monto(porBorrar.cliente.moneda, porBorrar.monto)}. El saldo de este
+                cliente se va a recalcular sin este pago. No se puede deshacer.
+              </p>
+              <div className="mt-6 flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={confirmarBorrado}
+                  disabled={borrando}
+                  className="flex h-12 w-full items-center justify-center rounded-[var(--radius-button)] bg-[var(--status-error)] text-[15px] font-semibold text-white disabled:opacity-60"
+                >
+                  {borrando ? 'Eliminando…' : 'Sí, eliminar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPorBorrar(null)}
+                  disabled={borrando}
+                  className="flex h-12 w-full items-center justify-center rounded-[var(--radius-button)] text-[15px] font-semibold text-[var(--text-secondary)]"
+                >
+                  Mejor no
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

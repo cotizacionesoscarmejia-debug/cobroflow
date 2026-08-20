@@ -616,6 +616,19 @@ export async function agregarGasto(datos: {
   if (error) throw error;
 }
 
+// Preauditoría — P0-2: antes no existía ninguna forma de corregir un pago mal
+// registrado (ej. duplicado por un doble-tap, ver P0-1). El saldo se recalcula
+// solo al borrar (proyectosConDatos suma los pagos restantes), sin tocar nada más.
+export async function eliminarPago(id: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('payments').delete().eq('id', id).eq('user_id', user.id);
+  if (error) throw error;
+}
+
 export async function eliminarGasto(id: string): Promise<void> {
   const supabase = createClient();
   const {

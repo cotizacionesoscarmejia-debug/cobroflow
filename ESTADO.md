@@ -1,6 +1,31 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-20 | Sesión actual: 6
 
+✅ CHECKPOINT — Sesión 6: PREAUDITORÍA FINAL (previa a auditoría profesional externa, ver
+`docs/PREAUDITORIA-2026-08-20.md`) — 🟡 CONDITIONAL GO inicial, ahora 🟢 GO. Encontrados y
+CORREGIDOS los 2 únicos P0:
+1. **Doble-tap al confirmar un pago podía duplicarlo** — era el único botón de dinero de toda la
+   app sin protección contra doble-envío (los otros 4 formularios sí la tenían). Arreglado en
+   `app/app/clientes/[id]/page.tsx`: estado `confirmando` + `disabled` en input y botón + guarda
+   de reentrada al inicio de `confirmarPago()`. De paso se encontró que un fallo de guardado no
+   avisaba nada al usuario (promesa sin manejar) — se agregó `catch` con mensaje visible
+   ("No pudimos guardar el pago. Revisa tu conexión e intenta de nuevo.").
+2. **Imposible editar o eliminar Clientes/Proyectos/Pagos, en ningún lugar de la app** — resuelto
+   el mínimo necesario: nueva función `eliminarPago()` (`lib/app-data.ts`) + acción de eliminar en
+   `/app/pagos` (ícono de basura por fila/tarjeta) CON modal de confirmación real (mismo patrón
+   visual que el modal de "¿Salir de aquí?" del onboarding — nunca `window.confirm`). Clientes y
+   Proyectos quedan sin editar/eliminar todavía — anotado como P1 pendiente, no bloquea el GO
+   porque ya no hay forma de que un pago duplicado (arreglado en el punto 1) quede sin remedio.
+- **Verificado**: `tsc --noEmit` limpio, `npm run build` limpio (33 rutas), prueba en vivo (Browser
+  pane, con datos de ejemplo): el modal de borrado de pago aparece y funciona (probado "Sí,
+  eliminar" y "Mejor no"), y el mensaje de error de "confirmar pago" se muestra correctamente
+  cuando el guardado falla.
+- ⚠️ **Pendientes P1 de la preauditoría, sin bloquear el envío a la auditoría externa** (detalle
+  completo en `docs/PREAUDITORIA-2026-08-20.md`): borrar un Gasto sigue sin confirmación, falta
+  `app/error.tsx` (boundary de errores con marca propia), el PDF de Premium tiene un texto viejo
+  que dice que Gastos "todavía no existe", sin timeout explícito en la llamada a la IA, sin
+  paginar `obtenerDB()` (tope ~1000 filas de Supabase), sin Sentry.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔴 CERTIFICACIÓN PRE-LANZAMIENTO (48) — VEREDICTO: **NO APTO** (aún no cobrar a un usuario real)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
