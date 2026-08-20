@@ -1,5 +1,106 @@
 # ESTADO — CobroFlow
-Última actualización: 2026-08-21 | Sesión actual: 6
+Última actualización: 2026-08-20 | Sesión actual: 6
+
+✅ CHECKPOINT — Sesión 6: PANEL DE 4 EXPERTOS (crítica sin piedad, contexto limpio) ejecutado y
+los 10 hallazgos aprobados por el usuario ("Ya revisé los 10 de la tabla... Adelante"). Puntajes:
+copy 14/20, craft 15/20, conversión (paywall) 5/10, retención 3/10, negocio 6/10 — veredicto vivió
+solo en el chat, nunca se guardó a archivo (se documenta aquí ahora).
+
+**De los 10 problemas, 7 son arreglos de código — HECHOS y DESPLEGADOS hoy:**
+1. **Sin gatillo de retención tras la 1ª semana** → nuevo correo semanal "Tu resumen de la
+   semana" (`lib/emails/resumen-semanal.ts`, function `procesarResumenSemanal` en
+   `app/api/cron/emails/route.ts`, corre los lunes dentro del mismo cron diario ya existente).
+   Va a TODO usuario con ≥1 cliente cargado (no solo pagos), es `FROM_TX` (transaccional — es su
+   propio dato, no una oferta) e ignora `marketing_opt_out`. **Loop de hábito documentado**:
+   gatillo externo = este correo · gatillo interno = "¿quién me debe ahora?" · acción = abrir
+   Centro de cobros · recompensa = saldo ya calculado (variable: a veces "todo cobrado", a veces
+   la lista de atrasados) · inversión = cada cliente/pago cargado hace el resumen más útil la
+   próxima semana.
+2. **Paywall no explica "por qué ahora"** → nueva línea bajo el recap (`app/paywall/page.tsx`):
+   "Free guarda hasta 3 clientes — si ya sigues a más de los que ves aquí, tu Radar se queda
+   incompleto justo con los que más te deben."
+3. **Gráfica "Proyección de flujo" se veía rota** (barras cayendo a negativo en meses sin
+   proyectos agendados) → `app/app/estadisticas/page.tsx`: las barras nunca bajan de 0
+   (`Math.max(0, neto)`), los meses sin proyectos agendados se pintan en gris (`<Cell>` por
+   `esperado === 0`) en vez de rojo/negativo, y la nota bajo la gráfica ahora aclara que el
+   primer mes incluye lo atrasado y qué son las barras grises. No se tocó `proyeccionFlujo()` en
+   `lib/app-data.ts` (la matemática ya era correcta — el problema era 100% de presentación).
+4. **Headline no nombraba la escena real del avatar** → `app/page.tsx`: "Cobra lo que te deben.
+   Controla lo que ganas." (genérico) → "Sabes quién te debe, sin buscar en WhatsApp." (la escena
+   más específica de FICHA-AVATAR.md). No se corrió el proceso completo de 10 variantes del `19`
+   — es un ajuste puntual aprobado como quick win, no una reescritura integral de la landing.
+6. **Sin costo de IA medido** → nueva tabla `ai_calls` (migración
+   `20260821000002_ai_calls.sql`, RLS por dueño) + `app/api/ai/analizar-negocio/route.ts` inserta
+   una fila por análisis con `tokens_entrada`/`tokens_salida`/`costo_estimado_usd` (precio por
+   modelo en `PRECIOS_USD_POR_MILLON`, fallback al precio de Sonnet si el modelo no está en la
+   lista). Base para comparar el costo real de IA contra el precio de Premium ($14.99).
+7. **"Garantía de Cero Riesgo" no garantizaba nada** → renombrada a "Sin compromiso"
+   (`app/page.tsx`, prop `nombre` de `<Garantia>`) — la condición (cancela cuando quieras) ya era
+   honesta, solo el nombre prometía de más.
+9. **Jerarquía plana en el Panel principal** (3 tarjetas iguales) → `app/app/page.tsx`:
+   `TarjetaStat` ahora acepta `variante="hero"|"secundario"`. "Cobrado este mes" es el dato héroe
+   (34px, ícono 44px, `md:col-span-2`); "Pendiente por cobrar" y "Clientes atrasados" quedan
+   secundarios (19px, borde más fino). Grid pasó de `md:grid-cols-3` a `md:grid-cols-2` (hero
+   ocupa la fila completa, los 2 secundarios quedan lado a lado debajo).
+
+**3 problemas NO son código — le corresponden al usuario, no se tocó nada (ni se inventó nada):**
+5. **Cero prueba social** → el arreglo real es pedir 3-5 testimonios a los primeros clientes que
+   ya están pagando. FICHA-AVATAR.md prohíbe explícitamente inventar testimonios/números — no se
+   agregó ningún testimonio de relleno.
+8. **Sin afiliados activos** → se activa desde el panel de Hotmart del usuario, fuera de esta app.
+10. **Sin señuelo de precio entre Pro y Premium** → NO se tocó ningún precio ni se agregó un plan
+    nuevo: cambiar precios reales requiere actualizar también la oferta configurada en Hotmart
+    (fuera del alcance de código), y el SO pide proponer cambios de precio, no decidirlos solo.
+    "Todo lo de Pro, sin límites" ya funciona como anclaje aditivo en el plan Premium — si el
+    usuario quiere un señuelo más fuerte (plan intermedio o precio distinto), es una decisión de
+    negocio que debe confirmar antes de tocar Hotmart + código a la vez.
+
+**Verificado**: `tsc --noEmit` limpio, `npm run build` limpio (33 rutas). Verificación visual:
+landing y paywall confirmados en vivo (Browser pane, texto extraído de la página real, headline
+y copy nuevos presentes). Panel principal y Estadísticas verificados con el mismo patrón de
+página temporal con datos de ejemplo ya usado en esta sesión (exportar `AppDataContext`/
+`ShellInterno` temporalmente, montar con datos mock, verificar, revertir — cero rastro en el
+código final, confirmado con `git status`); se confirmó por inspección de DOM que la tarjeta
+héroe mide 34px/`md:col-span-2` y que la gráfica de proyección generó la nota "barras grises son
+meses sin agendar" con los datos de prueba. **Sin capturas de pantalla guardadas a archivo**
+(mismo límite técnico de toda esta sesión — el Browser pane no compone frames para screenshot
+aquí) — verificación por texto/DOM real, no autoevaluación a ciegas.
+
+✅ CHECKPOINT — Sesión 6: item #10 del panel (señuelo de precio) — HECHO y DESPLEGADO de punta a
+punta (landing → onboarding/registro → confirmación → pago real en Hotmart), a $119/año.
+- **Nota de anclaje** bajo el precio de Premium (landing y paywall): "Solo $0.23 al día más que
+  Pro" — nuevo campo `notaAncla` en `PlanTier` (`components/landing/OfertaPlanes.tsx`).
+- **Selector Mensual/Anual dentro de la card de Premium** (mismo componente, campo `anual:
+  {precio, ctaHref, notaAhorro}`): al tocar "Anual" cambia el precio a $119, la nota a "Ahorras el
+  equivalente a 4 meses frente al pago mensual", y el CTA agrega `&ciclo=anual`. Verificado en
+  vivo: clic real en el botón → precio y CTA cambian correctamente.
+- **El plan sigue siendo 'premium' en todo el sistema** — "anual" es solo el ciclo de cobro, no
+  un plan nuevo (cero cambios en `Plan`, `capacidadesDe()`, gating, ni en las tablas). El `ciclo`
+  viaja como query param por toda la cadena: `OfertaPlanes` → `/registro?plan=premium&ciclo=anual`
+  → se guarda en `EstadoOnboarding.cicloElegido` (sessionStorage) → `/confirmar` lo lee tras
+  verificar la cuenta → `/api/ir-a-hotmart?plan=premium&ciclo=anual` → `hotmartCheckoutUrl()`
+  arma el link con la oferta anual en vez de la mensual.
+- **Oferta de Hotmart real, dada por el usuario** (link de pago que generó él mismo, no
+  adivinado): `off=wb7hd7f8&bid=1787231458731` sobre el mismo producto `F107189741W`. Guardada en
+  `lib/hotmart-links.ts` (`OFFER_PREMIUM_ANUAL`) y usada tal cual (con el `bid` incluido).
+  Verificado con un script de Node que reconstruye exactamente
+  `https://pay.hotmart.com/F107189741W?off=wb7hd7f8&bid=1787231458731&email=...&sck=...` — igual
+  al link real que compartió el usuario, más el tracking de email/id que ya usan Pro y Premium.
+- **Webhook**: `planForOfferCode()` (`lib/membership-fsm.ts`) reconoce el código anual vía
+  `HOTMART_OFFER_CODE_PREMIUM_ANUAL` y lo resuelve al mismo plan `'premium'` — una compra anual
+  activa el plan exactamente igual que una mensual, sin tocar `apply_hotmart_event`.
+- ⚠️ **Pendiente del usuario, único paso que falta**: agregar
+  `HOTMART_OFFER_CODE_PREMIUM_ANUAL=wb7hd7f8` como variable de entorno en Vercel (mismo lugar
+  donde ya están `HOTMART_OFFER_CODE_PRO`/`_PREMIUM`) y hacer Redeploy — sin eso, el webhook no
+  reconocerá una compra anual como plan Premium (quedaría como "plan no reconocido", visible en
+  los logs). El checkout/pago en sí ya funciona sin esa variable; solo la activación automática
+  del plan la necesita.
+- **No se tocó** el selector de ciclo en los upgrades desde dentro de la app (`BloqueoPlan.tsx`,
+  Cuenta) — quedan solo mensuales por ahora; el alcance de hoy fue específicamente landing +
+  paywall, que es donde vive la tabla de precios que auditó el panel.
+- Verificado: `tsc --noEmit` limpio, `npm run build` limpio (33 rutas), toggle probado en vivo en
+  la landing (clic real → precio/CTA cambian), URL de checkout verificada byte a byte contra la
+  que compartió el usuario.
 
 ✅ CHECKPOINT — Sesión 6: SISTEMA DE EMAILS completo construido (18/34/35/46/58), código desplegado
 a producción — falta que el usuario complete la configuración manual (Resend/DNS/variables) antes

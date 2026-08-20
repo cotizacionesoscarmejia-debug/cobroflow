@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   if (plan !== 'pro' && plan !== 'premium') {
     return NextResponse.redirect(new URL('/app/cuenta', req.url));
   }
+  const ciclo = req.nextUrl.searchParams.get('ciclo') === 'anual' ? 'anual' : 'mensual';
 
   const supabase = await createClient();
   const {
@@ -28,6 +29,6 @@ export async function GET(req: NextRequest) {
   // bloquear una venta real por un problema de tracking.
   await supabase.from('checkout_intentos').insert({ user_id: user.id, plan });
 
-  const destino = hotmartCheckoutUrl(plan, { email: user.email ?? undefined, userId: user.id });
+  const destino = hotmartCheckoutUrl(plan, { email: user.email ?? undefined, userId: user.id }, ciclo);
   return NextResponse.redirect(destino);
 }

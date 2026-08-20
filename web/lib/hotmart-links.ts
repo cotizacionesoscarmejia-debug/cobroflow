@@ -4,6 +4,12 @@
 // Premium dentro del único producto de Hotmart — ver lib/membership-fsm.ts.
 const CHECKOUT_BASE = 'https://pay.hotmart.com/F107189741W';
 const OFFER_CODE = { pro: 's6j82uzz', premium: 'avoatd7z' } as const;
+// Premium Anual (panel de expertos item #10 — el señuelo de precio entre Pro y
+// Premium). Mismo producto de Hotmart, oferta nueva con su propio `bid` (lo
+// que trae el link que generó el usuario en su panel — se preserva tal cual,
+// no se reconstruye a mano). Sigue siendo el plan 'premium' para toda la app;
+// solo cambia a qué oferta de Hotmart se manda al comprador.
+const OFFER_PREMIUM_ANUAL = { off: 'wb7hd7f8', bid: '1787231458731' } as const;
 
 /**
  * Área de compras del comprador en Hotmart — desde ahí gestiona/cancela
@@ -26,9 +32,18 @@ export const HOTMART_AREA_COMPRAS_URL = 'https://consumer.hotmart.com';
  * antes que por email (mitigación (b)) — evita crear una cuenta duplicada si
  * la persona paga con un correo distinto al de su cuenta de CobroFlow.
  */
-export function hotmartCheckoutUrl(plan: 'pro' | 'premium', usuario?: { email?: string; userId?: string }): string {
+export function hotmartCheckoutUrl(
+  plan: 'pro' | 'premium',
+  usuario?: { email?: string; userId?: string },
+  ciclo?: 'mensual' | 'anual'
+): string {
   const url = new URL(CHECKOUT_BASE);
-  url.searchParams.set('off', OFFER_CODE[plan]);
+  if (plan === 'premium' && ciclo === 'anual') {
+    url.searchParams.set('off', OFFER_PREMIUM_ANUAL.off);
+    url.searchParams.set('bid', OFFER_PREMIUM_ANUAL.bid);
+  } else {
+    url.searchParams.set('off', OFFER_CODE[plan]);
+  }
   if (usuario?.email) url.searchParams.set('email', usuario.email);
   if (usuario?.userId) url.searchParams.set('sck', usuario.userId);
   return url.toString();

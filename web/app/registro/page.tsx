@@ -30,16 +30,17 @@ function RegistroForm() {
   const [error, setError] = useState<string | null>(null);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const plan = searchParams.get('plan');
+  const ciclo = searchParams.get('ciclo') === 'anual' ? 'anual' : undefined;
   const nombrePlan = plan ? NOMBRE_PLAN[plan] : undefined;
   const [estado, setEstado] = useState<EstadoOnboarding>({});
 
   useEffect(() => {
     if (plan === 'free' || plan === 'pro' || plan === 'premium') {
-      setEstado(guardarEstado({ planElegido: plan }));
+      setEstado(guardarEstado({ planElegido: plan, cicloElegido: ciclo }));
     } else {
       setEstado(leerEstado());
     }
-  }, [plan]);
+  }, [plan, ciclo]);
 
   const listoParaEnviar =
     nombre.trim().length > 0 &&

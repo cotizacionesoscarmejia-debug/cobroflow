@@ -43,13 +43,13 @@ function ConfirmarForm() {
     }
 
     // Migra el primer cliente del onboarding (si existe) a la cuenta real recién creada.
-    const { planElegido, nombre, apellido } = leerEstado();
+    const { planElegido, cicloElegido, nombre, apellido } = leerEstado();
     try {
       await migrarClienteDeOnboarding();
       if (nombre && apellido) {
         await actualizarNombre(nombre, apellido);
       }
-      guardarEstado({ primerCliente: undefined, planElegido: undefined, nombre: undefined, apellido: undefined });
+      guardarEstado({ primerCliente: undefined, planElegido: undefined, cicloElegido: undefined, nombre: undefined, apellido: undefined });
     } catch {
       // La cuenta ya quedó creada — si esto falla, el usuario solo pierde el
       // traspaso del cliente de prueba o su nombre, no el acceso. No bloquea el login.
@@ -60,7 +60,8 @@ function ConfirmarForm() {
     // (fuente real del carrito abandonado, B/18/35) y arma el link con la
     // sesión que se acaba de crear.
     if (planElegido === 'pro' || planElegido === 'premium') {
-      window.location.href = `/api/ir-a-hotmart?plan=${planElegido}`;
+      const sufijoCiclo = cicloElegido === 'anual' ? '&ciclo=anual' : '';
+      window.location.href = `/api/ir-a-hotmart?plan=${planElegido}${sufijoCiclo}`;
       return;
     }
 

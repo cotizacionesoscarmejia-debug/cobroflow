@@ -27,7 +27,7 @@ export default function LandingPage() {
         logo={<img src="/logo.png" alt="" aria-hidden="true" className="size-7 object-contain" />}
         loginHref="/login"
         loginLabel="Iniciar sesión"
-        h1Marked="Cobra lo que te deben. [acento]Controla lo que ganas[/acento]."
+        h1Marked="Sabes quién te debe, [acento]sin buscar en WhatsApp[/acento]."
         subtitleMarked="CobroFlow te muestra cuánto has cobrado, cuánto te deben y qué clientes necesitan seguimiento."
         ctaLabel={CTA_LABEL}
         ctaHref={CTA_HREF}
@@ -133,6 +133,12 @@ export default function LandingPage() {
             descripcion: 'Para quien quiere proyectar y entender su negocio a fondo.',
             ctaLabel: 'Empezar con Premium',
             ctaHref: `${CTA_HREF}?plan=premium`,
+            notaAncla: 'Solo $0.23 al día más que Pro',
+            anual: {
+              precio: '$119',
+              ctaHref: `${CTA_HREF}?plan=premium&ciclo=anual`,
+              notaAhorro: 'Ahorras el equivalente a 4 meses frente al pago mensual',
+            },
             features: [
               'Todo lo de Pro, sin límites',
               'Proyección de tu flujo de dinero',
@@ -145,7 +151,7 @@ export default function LandingPage() {
 
       {/* 7. GARANTÍA — riesgo real del modelo freemium, no un plazo inventado */}
       <Garantia
-        nombre="la Garantía de Cero Riesgo"
+        nombre="Sin compromiso"
         condicionMarked="Empiezas en el plan Free sin poner tarjeta. Si más adelante pasas a Pro o Premium, [b]cancelas cuando quieras[/b], sin permanencia ni preguntas."
         pisoLegal="Pagos procesados de forma segura por Hotmart"
       />

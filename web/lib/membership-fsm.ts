@@ -39,5 +39,8 @@ export function planForOfferCode(offerCode: string | undefined): 'pro' | 'premiu
   if (!offerCode) return null;
   if (offerCode === process.env.HOTMART_OFFER_CODE_PRO) return 'pro';
   if (offerCode === process.env.HOTMART_OFFER_CODE_PREMIUM) return 'premium';
+  // Premium Anual es una oferta distinta del mismo producto (mismo plan, otro
+  // ciclo de cobro) — panel de expertos item #10.
+  if (offerCode === process.env.HOTMART_OFFER_CODE_PREMIUM_ANUAL) return 'premium';
   return null;
 }

@@ -17,6 +17,8 @@ import { emailDunning } from '@/lib/emails/dunning';
 import { emailWinback } from '@/lib/emails/retencion';
 import { emailActivacionD1, emailActivacionD3, emailActivacionD7 } from '@/lib/emails/activacion';
 import { emailNurturing1, emailNurturing2, emailNurturing3 } from '@/lib/emails/nurturing';
+import { emailResumenSemanal } from '@/lib/emails/resumen-semanal';
+import { simboloMoneda } from '@/lib/onboarding';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -220,6 +222,72 @@ async function procesarNurturing(admin: SupabaseClient): Promise<number> {
   return enviados;
 }
 
+// ── F. Resumen semanal — el gatillo de retención que faltaba después de la 1ª
+//    semana (panel de expertos, item #1). Solo corre los lunes (el cron es
+//    diario); a todo usuario con al menos 1 cliente cargado, sin importar el
+//    plan — es su propio dato, no una oferta, por eso usa FROM_TX y no mira
+//    marketing_opt_out. Idempotente por semana vía el lunes como llave. ──
+async function procesarResumenSemanal(admin: SupabaseClient): Promise<number> {
+  const hoy = new Date();
+  if (hoy.getDay() !== 1) return 0; // solo lunes
+
+  const claveSemana = hoy.toISOString().slice(0, 10);
+  const desde7d = new Date(Date.now() - 7 * DIA_MS).toISOString();
+
+  const { data: clientesRaw } = await admin.from('clients').select('id, user_id, moneda');
+  if (!clientesRaw || clientesRaw.length === 0) return 0;
+  const userIds = Array.from(new Set(clientesRaw.map((c) => c.user_id as string)));
+
+  let enviados = 0;
+  for (const userId of userIds) {
+    const { data: perfil } = await admin.from('profiles').select('email, moneda_principal').eq('id', userId).maybeSingle();
+    if (!perfil?.email) continue;
+    if (await yaSeEnvio(admin, { email: perfil.email, template: `resumen_semanal_${claveSemana}` })) continue;
+
+    const monedaPrincipal = perfil.moneda_principal ?? 'USD';
+    const clientesUsuario = clientesRaw.filter((c) => c.user_id === userId && c.moneda === monedaPrincipal);
+    const idsClientes = new Set(clientesUsuario.map((c) => c.id as string));
+    if (idsClientes.size === 0) continue;
+
+    const [{ data: proyectosRaw }, { data: pagosRaw }] = await Promise.all([
+      admin.from('projects').select('id, client_id, precio_total, fecha_promesa').eq('user_id', userId),
+      admin.from('payments').select('project_id, monto, fecha').eq('user_id', userId),
+    ]);
+    const proyectos = (proyectosRaw ?? []).filter((p) => idsClientes.has(p.client_id as string));
+    if (proyectos.length === 0) continue;
+    const pagos = pagosRaw ?? [];
+
+    const hoyIso = hoy.toISOString().slice(0, 10);
+    let cobrado7d = 0;
+    let clientesAtrasados = 0;
+    for (const cliente of clientesUsuario) {
+      const proyectosCliente = proyectos.filter((p) => p.client_id === cliente.id);
+      let algunoAtrasado = false;
+      for (const p of proyectosCliente) {
+        const pagosProyecto = pagos.filter((g) => g.project_id === p.id);
+        const pagado = pagosProyecto.reduce((s, g) => s + Number(g.monto), 0);
+        const saldo = Number(p.precio_total) - pagado;
+        if (saldo > 0 && p.fecha_promesa < hoyIso) algunoAtrasado = true;
+        for (const g of pagosProyecto) {
+          if (g.fecha >= desde7d) cobrado7d += Number(g.monto);
+        }
+      }
+      if (algunoAtrasado) clientesAtrasados++;
+    }
+
+    const cobradoTexto = `${monedaPrincipal} ${simboloMoneda(monedaPrincipal)}${Math.round(cobrado7d).toLocaleString('es')}`;
+    try {
+      const t = emailResumenSemanal({ cobradoTexto, atrasados: clientesAtrasados });
+      const { id } = await enviarEmail({ to: perfil.email, from: FROM_TX, subject: t.subject, html: t.html, text: t.text });
+      await registrarEnvio(admin, { userId, email: perfil.email, template: `resumen_semanal_${claveSemana}`, resendId: id });
+      enviados++;
+    } catch (e) {
+      console.error('cron resumen semanal: fallo con', perfil.email, e);
+    }
+  }
+  return enviados;
+}
+
 export async function GET(req: NextRequest) {
   // Fail-secure: sin CRON_SECRET configurado, el endpoint no corre (nadie más
   // que Vercel Cron debe poder disparar envíos masivos de correo).
@@ -234,13 +302,14 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const [carrito, dunning, winback, activacion, nurturing] = await Promise.all([
+  const [carrito, dunning, winback, activacion, nurturing, resumenSemanal] = await Promise.all([
     procesarCarrito(admin),
     procesarDunning(admin),
     procesarWinback(admin),
     procesarActivacion(admin),
     procesarNurturing(admin),
+    procesarResumenSemanal(admin),
   ]);
 
-  return NextResponse.json({ ok: true, enviados: { carrito, dunning, winback, activacion, nurturing } });
+  return NextResponse.json({ ok: true, enviados: { carrito, dunning, winback, activacion, nurturing, resumenSemanal } });
 }

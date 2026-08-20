@@ -61,6 +61,10 @@ export default function PaywallPage() {
             </span>
             . Elige con qué plan quieres seguir.
           </p>
+          <p className="mt-3 text-[13px] text-[var(--text-tertiary)]">
+            Free guarda hasta 3 clientes — si ya sigues a más de los que ves aquí, tu Radar se
+            queda incompleto justo con los que más te deben.
+          </p>
         </div>
       </div>
 
@@ -107,6 +111,12 @@ export default function PaywallPage() {
               descripcion: 'Para quien quiere proyectar y entender su negocio a fondo.',
               ctaLabel: 'Quiero proyectar mi negocio',
               ctaHref: '/registro?plan=premium',
+              notaAncla: 'Solo $0.23 al día más que Pro',
+              anual: {
+                precio: '$119',
+                ctaHref: '/registro?plan=premium&ciclo=anual',
+                notaAhorro: 'Ahorras el equivalente a 4 meses frente al pago mensual',
+              },
               features: [
                 'Todo lo de Pro, sin límites',
                 'Proyección de tu flujo de dinero',

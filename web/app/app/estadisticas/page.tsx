@@ -7,7 +7,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Sparkles, FileDown, ChevronRight, TrendingUp, Receipt } from 'lucide-react';
 import { BloqueoPlan } from '@/components/app/BloqueoPlan';
 import { MetaMensual } from '@/components/app/MetaMensual';
@@ -41,6 +41,16 @@ export default function EstadisticasPage() {
     [gastos, monedaPrincipal]
   );
   const porCategoria = useMemo(() => gastadoPorCategoria(gastos, monedaPrincipal), [gastos, monedaPrincipal]);
+  // El primer mes agrupa atrasados + lo que vence ahora, por eso suele ser mucho
+  // más alto que los siguientes — y los meses sin proyectos agendados todavía
+  // pueden dar neto negativo (solo por el gasto recurrente). Mostrarlo tal cual
+  // se ve "roto"; en vez de eso: nunca bajar del eje, y marcar en gris los meses
+  // sin nada agendado para no confundirlos con una caída real de ingresos.
+  const proyeccionMostrada = useMemo(
+    () => proyeccion.map((p) => ({ ...p, netoMostrado: Math.max(0, p.neto), sinAgendar: p.esperado === 0 })),
+    [proyeccion]
+  );
+  const hayMesesSinAgendar = proyeccionMostrada.slice(1).some((p) => p.sinAgendar);
 
   const porCliente = useMemo(() => {
     const mapa = new Map<string, { nombre: string; moneda: string; total: number }>();
@@ -194,19 +204,27 @@ export default function EstadisticasPage() {
                 </div>
                 <div className="mt-3 h-[180px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={proyeccion} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+                    <BarChart data={proyeccionMostrada} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
                       <CartesianGrid vertical={false} stroke="color-mix(in oklab, var(--text-tertiary) 14%, transparent)" />
                       <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={44} />
-                      <Tooltip formatter={(v) => monto(monedaPrincipal, Number(v))} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: 'var(--shadow-2)', fontSize: 12 }} />
-                      <Bar dataKey="neto" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                      <Tooltip
+                        formatter={(v, _n, item) => [monto(monedaPrincipal, Number(v)), item?.payload?.sinAgendar ? 'Sin proyectos agendados' : 'Proyectado']}
+                        contentStyle={{ borderRadius: 12, border: 'none', boxShadow: 'var(--shadow-2)', fontSize: 12 }}
+                      />
+                      <Bar dataKey="netoMostrado" radius={[6, 6, 0, 0]} maxBarSize={28}>
+                        {proyeccionMostrada.map((p, i) => (
+                          <Cell key={p.mes + i} fill={p.sinAgendar ? 'var(--surface-2)' : 'var(--accent)'} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
                 <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
                   {gastoRecurrenteMensual > 0
-                    ? `Cobros esperados menos ${monto(monedaPrincipal, gastoRecurrenteMensual)} de gastos recurrentes, en ${monedaPrincipal}.`
-                    : `Según las fechas prometidas de tus proyectos pendientes, en ${monedaPrincipal}.`}
+                    ? `Cobros esperados menos ${monto(monedaPrincipal, gastoRecurrenteMensual)} de gastos recurrentes, en ${monedaPrincipal}. El primer mes incluye lo atrasado.`
+                    : `Según las fechas prometidas de tus proyectos pendientes, en ${monedaPrincipal}. El primer mes incluye lo atrasado.`}
+                  {hayMesesSinAgendar && ' Las barras grises son meses sin proyectos agendados todavía.'}
                 </p>
               </section>
             </div>

@@ -19,6 +19,23 @@ export const runtime = 'nodejs';
 const LIMITE_ANALISIS_MES = 10;
 const AI_MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
 
+// Precio por millón de tokens (entrada/salida en USD) — para estimar el costo
+// real de cada llamada y poder compararlo contra el precio de Premium. Si el
+// modelo configurado no está en la lista, se usa el precio de Sonnet como
+// referencia conservadora (mejor sobre-estimar el costo que sub-estimarlo).
+const PRECIOS_USD_POR_MILLON: Record<string, { entrada: number; salida: number }> = {
+  'claude-sonnet-5': { entrada: 3, salida: 15 },
+  'claude-sonnet-4-6': { entrada: 3, salida: 15 },
+  'claude-opus-5': { entrada: 5, salida: 25 },
+  'claude-haiku-4-5': { entrada: 1, salida: 5 },
+};
+const PRECIO_DEFAULT = { entrada: 3, salida: 15 };
+
+function estimarCostoUsd(modelo: string, tokensEntrada: number, tokensSalida: number): number {
+  const precio = PRECIOS_USD_POR_MILLON[modelo] ?? PRECIO_DEFAULT;
+  return (tokensEntrada / 1_000_000) * precio.entrada + (tokensSalida / 1_000_000) * precio.salida;
+}
+
 const AnalisisSchema = z.object({
   resumen: z.string().min(1),
   positivos: z.array(z.string()).min(1),
@@ -185,6 +202,8 @@ export async function POST() {
 
   let analisis: Analisis | null = null;
   let ultimoError = '';
+  let tokensEntradaTotal = 0;
+  let tokensSalidaTotal = 0;
   for (let intento = 0; intento <= 1 && !analisis; intento++) {
     const res = await client.messages.create({
       model: AI_MODEL,
@@ -194,6 +213,8 @@ export async function POST() {
       tool_choice: { type: 'tool', name: 'reportar_analisis' },
       messages,
     });
+    tokensEntradaTotal += res.usage.input_tokens;
+    tokensSalidaTotal += res.usage.output_tokens;
 
     const toolUse = res.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
     const parsed = AnalisisSchema.safeParse(toolUse?.input);
@@ -212,6 +233,16 @@ export async function POST() {
   if (!analisis) {
     return NextResponse.json({ error: 'analisis_invalido' }, { status: 502 });
   }
+
+  // Costo medido de esta llamada (panel de expertos, item #6) — best-effort:
+  // si falla el log, no debe tumbar una respuesta que ya está lista.
+  await supabase.from('ai_calls').insert({
+    user_id: user.id,
+    modelo: AI_MODEL,
+    tokens_entrada: tokensEntradaTotal,
+    tokens_salida: tokensSalidaTotal,
+    costo_estimado_usd: estimarCostoUsd(AI_MODEL, tokensEntradaTotal, tokensSalidaTotal),
+  });
 
   const { error: errInsert } = await supabase.from('ai_analysis').insert({
     user_id: user.id,

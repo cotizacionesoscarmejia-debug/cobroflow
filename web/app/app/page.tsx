@@ -70,6 +70,7 @@ function TarjetaStat({
   valor,
   nota,
   notaTono,
+  variante = 'secundario',
 }: {
   i: number;
   icono: typeof DollarSign;
@@ -78,28 +79,37 @@ function TarjetaStat({
   valor: React.ReactNode;
   nota?: string;
   notaTono?: 'positivo' | 'negativo' | 'error' | 'neutro';
+  /** 'hero' = el dato principal del panel (más grande); las demás son secundarias. */
+  variante?: 'hero' | 'secundario';
 }) {
   const color = tono === 'accent' ? 'var(--accent)' : tono === 'accent-2' ? 'var(--accent-2)' : 'var(--status-error)';
   const bgSuave = tono === 'accent' ? 'var(--status-success-soft)' : tono === 'accent-2' ? 'var(--chip-bg)' : 'var(--status-error-soft)';
   const notaColor =
     notaTono === 'error' ? 'var(--status-error)' : notaTono === 'negativo' ? 'var(--text-secondary)' : 'var(--status-success)';
+  const esHero = variante === 'hero';
   return (
     <motion.div
       {...entra(i)}
-      className="relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)] p-5 shadow-[var(--shadow-1)]"
-      style={{ borderTop: `3px solid ${color}` }}
+      className={`relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)] shadow-[var(--shadow-1)] ${esHero ? 'p-5 md:col-span-2' : 'p-4'}`}
+      style={{ borderTop: `${esHero ? 3 : 2}px solid ${color}` }}
     >
       <div className="flex items-center gap-3">
-        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: bgSuave }}>
-          <Icono size={18} color={color} aria-hidden="true" />
+        <span
+          aria-hidden="true"
+          className={`flex shrink-0 items-center justify-center rounded-full ${esHero ? 'size-11' : 'size-8'}`}
+          style={{ backgroundColor: bgSuave }}
+        >
+          <Icono size={esHero ? 20 : 15} color={color} aria-hidden="true" />
         </span>
-        <p className="text-[13px] font-medium text-[var(--text-secondary)]">{titulo}</p>
+        <p className={`font-medium text-[var(--text-secondary)] ${esHero ? 'text-[13.5px]' : 'text-[12px]'}`}>{titulo}</p>
       </div>
-      <div className="mt-3 text-[26px] font-bold leading-none tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
+      <div
+        className={`mt-3 font-bold leading-none tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)] ${esHero ? 'text-[34px]' : 'text-[19px]'}`}
+      >
         {valor}
       </div>
       {nota && (
-        <p className="mt-2 text-[12px] font-medium" style={{ color: notaColor }}>
+        <p className={`mt-2 font-medium ${esHero ? 'text-[12.5px]' : 'text-[11px]'}`} style={{ color: notaColor }}>
           {nota}
         </p>
       )}
@@ -170,13 +180,14 @@ export default function DashboardPage() {
         </h1>
       </motion.div>
 
-      {/* ── 3 tarjetas principales ── */}
-      <div className="mt-5 grid grid-cols-1 gap-3 md:mt-0 md:grid-cols-3">
+      {/* ── 3 tarjetas principales: "Cobrado este mes" es el dato héroe, las otras dos son secundarias ── */}
+      <div className="mt-5 grid grid-cols-1 gap-3 md:mt-0 md:grid-cols-2">
         <TarjetaStat
           i={1}
           icono={DollarSign}
           tono="accent"
           titulo="Cobrado este mes"
+          variante="hero"
           valor={
             monedasCobradas.length <= 1 ? (
               <NumeroAnimado valor={cobradoPorMoneda[monedasCobradas[0]] ?? 0} prefijo={`${monedasCobradas[0] ?? monedaPrincipal} ${simboloMoneda(monedasCobradas[0] ?? monedaPrincipal)}`} />

@@ -14,6 +14,10 @@ export interface EstadoOnboarding {
   moneda?: string;
   primerCliente?: PrimerCliente;
   planElegido?: 'free' | 'pro' | 'premium';
+  /** Ciclo de pago elegido para un plan pago (hoy solo aplica a Premium Anual,
+   *  panel de expertos item #10 — el plan sigue siendo 'premium', esto solo
+   *  decide qué oferta de Hotmart usar). Default implícito 'mensual'. */
+  cicloElegido?: 'mensual' | 'anual';
   nombre?: string;
   apellido?: string;
 }

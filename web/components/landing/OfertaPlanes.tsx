@@ -8,6 +8,7 @@
 // kit (Hairline, CheckCustom, CtaButton, Kicker, SectionShell) — solo cambia la
 // estructura de 2 columnas a 3. Documentado en ESTADO.md → "Decisiones técnicas".
 
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 import { CheckCustom, CtaButton, Hairline, Kicker, Perforacion, SectionShell, useReveal, VIEWPORT_ONCE } from './ui';
@@ -40,6 +41,12 @@ export interface PlanTier {
   badge?: string;
   /** 4-6 features en lenguaje de resultado. */
   features: string[];
+  /** Nota de anclaje bajo el precio (panel de expertos, item #10 — el salto de
+   *  precio al siguiente plan traducido a algo chico: "$X al día más"). Opcional. */
+  notaAncla?: string;
+  /** Variante anual opcional (hoy solo Premium) — activa un selector
+   *  Mensual/Anual dentro de la card (panel de expertos, item #10). */
+  anual?: { precio: string; ctaHref: string; notaAhorro: string };
 }
 
 export interface OfertaPlanesProps {
@@ -70,27 +77,50 @@ function Features({ items, origen, destacado }: { items: string[]; origen: strin
 }
 
 function CardPlan({ plan, origen }: { plan: PlanTier; origen: string }) {
+  const [ciclo, setCiclo] = useState<'mensual' | 'anual'>('mensual');
+  const esAnual = ciclo === 'anual' && !!plan.anual;
+  const precioMostrado = esAnual ? plan.anual!.precio : plan.precioMes;
+  const ctaHrefMostrado = esAnual ? plan.anual!.ctaHref : plan.ctaHref;
+  const notaMostrada = esAnual ? plan.anual!.notaAhorro : plan.notaAncla;
+
   const cuerpo = (
     <div className={`relative rounded-[var(--radius-card)] p-6 pl-7 md:p-7 md:pl-8 ${plan.destacado ? 'bg-[color-mix(in_oklab,var(--accent)_5%,transparent)]' : 'bg-[var(--surface)]'}`}>
       <Perforacion tono={plan.destacado ? 'accent' : 'neutro'} />
       <h3 className="text-[18px] font-semibold text-[var(--text-primary)]">{plan.nombre}</h3>
       <p className="mt-1 text-[13px] leading-snug text-[var(--text-secondary)]">{plan.descripcion}</p>
+      {plan.anual && (
+        <div className="mt-4 inline-flex gap-1 rounded-full bg-[var(--surface-2)] p-1">
+          {(['mensual', 'anual'] as const).map((opcion) => (
+            <button
+              key={opcion}
+              type="button"
+              onClick={() => setCiclo(opcion)}
+              className={`rounded-full px-3 py-1 text-[12px] font-semibold capitalize transition-colors duration-150 ${
+                ciclo === opcion ? 'bg-[var(--surface)] text-[var(--text-primary)] shadow-[var(--shadow-1)]' : 'text-[var(--text-secondary)]'
+              }`}
+            >
+              {opcion}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="mt-4 flex items-baseline gap-1">
         <span className="text-[32px] font-bold leading-none tabular-nums text-[var(--text-primary)] [font-family:var(--font-display)]">
-          {plan.precioMes}
+          {precioMostrado}
         </span>
-        {plan.precioMes !== '$0' && <span className="text-[14px] text-[var(--text-secondary)]">/mes</span>}
+        {precioMostrado !== '$0' && <span className="text-[14px] text-[var(--text-secondary)]">{esAnual ? '/año' : '/mes'}</span>}
       </p>
+      {notaMostrada && <p className="mt-1.5 text-[12px] text-[var(--text-tertiary)]">{notaMostrada}</p>}
       <Features items={plan.features} origen={origen} destacado={plan.destacado} />
       <div className="mt-6">
         {plan.destacado ? (
-          <CtaButton href={plan.ctaHref} fullMobile>
+          <CtaButton href={ctaHrefMostrado} fullMobile>
             {plan.ctaLabel}
           </CtaButton>
         ) : (
           <motion.a
             whileTap={{ scale: 0.97 }}
-            href={plan.ctaHref}
+            href={ctaHrefMostrado}
             className="flex h-12 w-full items-center justify-center rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_35%,transparent)] text-[15px] font-semibold text-[var(--text-primary)] transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--text-tertiary)_8%,transparent)] [touch-action:manipulation]"
           >
             {plan.ctaLabel}
