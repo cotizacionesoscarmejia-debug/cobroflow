@@ -1,6 +1,26 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-20 | Sesión actual: 6
 
+✅ CHECKPOINT — Sesión 6: cierra el P1 que quedaba pendiente de la preauditoría — Clientes y
+Proyectos ahora se pueden editar y eliminar (antes solo Pagos, ver checkpoint anterior). El
+usuario lo pidió explícitamente después de revisar el informe.
+- **Nuevas funciones** (`lib/app-data.ts`): `actualizarCliente`, `eliminarCliente`,
+  `actualizarProyecto`, `eliminarProyecto`.
+- **Nuevas pantallas**: `/app/clientes/[id]/editar` (nombre/teléfono/moneda) y
+  `/app/proyectos/[id]/editar` (nombre/precio total/fecha) — mismo patrón visual que Nuevo
+  cliente/Nuevo proyecto. Editar proyecto bloquea bajar el precio total por debajo de lo ya
+  cobrado (evita un saldo negativo sin sentido).
+- **Entrada desde `/app/clientes/[id]`**: íconos de editar/eliminar junto al nombre del cliente, y
+  por cada proyecto de su lista. Eliminar SIEMPRE pasa por un modal de confirmación que dice
+  EXACTAMENTE cuántos proyectos/pagos se van a borrar en cascada (por el `on delete cascade` del
+  esquema) — nunca un borrado silencioso, mismo estándar que ya se aplicó a Pagos.
+- **Verificado**: `tsc --noEmit` limpio, `npm run build` limpio (35 rutas). Probado en vivo con
+  datos de ejemplo: el modal de eliminar cliente mostró correctamente "también se van a eliminar
+  sus 2 proyectos y 2 pagos", y el de eliminar proyecto "también se van a eliminar los 2 pagos
+  registrados en este proyecto" — conteos exactos, no aproximados.
+- Con esto, el único P1 que quedaba abierto de `docs/PREAUDITORIA-2026-08-20.md` (sección C/P0-2)
+  queda cerrado del todo.
+
 ✅ CHECKPOINT — Sesión 6: PREAUDITORÍA FINAL (previa a auditoría profesional externa, ver
 `docs/PREAUDITORIA-2026-08-20.md`) — 🟡 CONDITIONAL GO inicial, ahora 🟢 GO. Encontrados y
 CORREGIDOS los 2 únicos P0:

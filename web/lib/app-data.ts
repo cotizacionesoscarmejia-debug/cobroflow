@@ -129,6 +129,68 @@ export function proyectosConDatos(db: DB): ProyectoConDatos[] {
   });
 }
 
+// Preauditoría — P1 (seguimiento de los P0 de doble-tap/sin-corrección): antes
+// no había forma de arreglar un dato mal cargado en Clientes ni Proyectos.
+
+export async function actualizarCliente(
+  id: string,
+  datos: { nombre: string; telefono?: string; moneda: string }
+): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase
+    .from('clients')
+    .update({ nombre: datos.nombre.trim(), telefono: datos.telefono?.trim() || null, moneda: datos.moneda })
+    .eq('id', id)
+    .eq('user_id', user.id);
+  if (error) throw error;
+}
+
+/** Borra el cliente Y, por `on delete cascade`, todos sus proyectos y pagos —
+ *  el llamador debe advertirlo explícitamente antes de confirmar (nunca un
+ *  borrado silencioso de datos relacionados). */
+export async function eliminarCliente(id: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('clients').delete().eq('id', id).eq('user_id', user.id);
+  if (error) throw error;
+}
+
+export async function actualizarProyecto(
+  id: string,
+  datos: { nombre: string; precioTotal: number; fechaPromesa: string }
+): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase
+    .from('projects')
+    .update({ nombre: datos.nombre.trim() || 'Proyecto', precio_total: datos.precioTotal, fecha_promesa: datos.fechaPromesa })
+    .eq('id', id)
+    .eq('user_id', user.id);
+  if (error) throw error;
+}
+
+/** Borra el proyecto Y, por `on delete cascade`, todos sus pagos — mismo
+ *  aviso explícito que eliminarCliente. */
+export async function eliminarProyecto(id: string): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('projects').delete().eq('id', id).eq('user_id', user.id);
+  if (error) throw error;
+}
+
 export async function agregarClienteYProyecto(
   _db: DB,
   datos: { nombre: string; moneda: string; proyecto: string; precioTotal: number; anticipo: number; fechaPromesa: string }
