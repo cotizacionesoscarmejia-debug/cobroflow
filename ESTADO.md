@@ -1,6 +1,14 @@
 # ESTADO — CobroFlow
 Última actualización: 2026-08-20 | Sesión actual: 6
 
+✅ CHECKPOINT — Sesión 6: editar el monto de un Pago ya registrado (a pedido explícito del
+usuario, tras revisar la producción). `actualizarPago(id, monto)` en `lib/app-data.ts` + ícono de
+lápiz junto al de eliminar en `/app/pagos` (tabla y tarjetas móvil), abre un modal con el monto
+actual precargado — validado (rechaza vacío/0/negativo con "Escribe un monto válido.") y con
+mensaje de error si falla el guardado. Verificado: `tsc`/`build` limpios (35 rutas), probado en
+vivo (Browser pane): el modal precarga el monto correcto y la validación de monto inválido
+funciona.
+
 ✅ CHECKPOINT — Sesión 6: cierra el P1 que quedaba pendiente de la preauditoría — Clientes y
 Proyectos ahora se pueden editar y eliminar (antes solo Pagos, ver checkpoint anterior). El
 usuario lo pidió explícitamente después de revisar el informe.

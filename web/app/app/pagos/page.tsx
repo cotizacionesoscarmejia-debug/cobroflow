@@ -8,9 +8,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
-import { Plus, Search, Download, Trash2 } from 'lucide-react';
+import { Plus, Search, Download, Trash2, Pencil } from 'lucide-react';
 import { useAppData } from '@/components/app/AppDataProvider';
-import { pagosConDatos, eliminarPago, type PagoConDatos } from '@/lib/app-data';
+import { pagosConDatos, eliminarPago, actualizarPago, type PagoConDatos } from '@/lib/app-data';
 import { capacidadesDe } from '@/lib/planes';
 import { InsigniaBloqueo } from '@/components/app/BloqueoPlan';
 import { SkeletonPantalla } from '@/components/app/SkeletonPantalla';
@@ -27,6 +27,10 @@ export default function PagosPage() {
   const [buscar, setBuscar] = useState('');
   const [porBorrar, setPorBorrar] = useState<PagoConDatos | null>(null);
   const [borrando, setBorrando] = useState(false);
+  const [porEditar, setPorEditar] = useState<PagoConDatos | null>(null);
+  const [montoEditado, setMontoEditado] = useState('');
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [errorEdicion, setErrorEdicion] = useState<string | null>(null);
 
   const pagos = useMemo(() => pagosConDatos(db), [db]);
 
@@ -39,6 +43,32 @@ export default function PagosPage() {
       setPorBorrar(null);
     } finally {
       setBorrando(false);
+    }
+  }
+
+  function abrirEdicion(p: PagoConDatos) {
+    setPorEditar(p);
+    setMontoEditado(String(p.monto));
+    setErrorEdicion(null);
+  }
+
+  async function confirmarEdicion() {
+    if (!porEditar) return;
+    const montoNum = Number(montoEditado.replace(',', '.')) || 0;
+    if (montoNum <= 0) {
+      setErrorEdicion('Escribe un monto válido.');
+      return;
+    }
+    setGuardandoEdicion(true);
+    setErrorEdicion(null);
+    try {
+      await actualizarPago(porEditar.id, montoNum);
+      await recargar();
+      setPorEditar(null);
+    } catch {
+      setErrorEdicion('No pudimos guardar el cambio. Intenta de nuevo.');
+    } finally {
+      setGuardandoEdicion(false);
     }
   }
   const filtrados = buscar.trim()
@@ -122,14 +152,24 @@ export default function PagosPage() {
                     <td className="px-3 py-3 text-[var(--text-secondary)]">{p.proyecto.nombre}</td>
                     <td className="px-5 py-3 font-semibold tabular-nums text-[var(--status-success)]">+{monto(p.cliente.moneda, p.monto)}</td>
                     <td className="px-5 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setPorBorrar(p)}
-                        aria-label="Eliminar pago"
-                        className="flex size-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:text-[var(--status-error)]"
-                      >
-                        <Trash2 size={14} aria-hidden="true" />
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => abrirEdicion(p)}
+                          aria-label="Editar pago"
+                          className="flex size-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:text-[var(--accent)]"
+                        >
+                          <Pencil size={14} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPorBorrar(p)}
+                          aria-label="Eliminar pago"
+                          className="flex size-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:text-[var(--status-error)]"
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -149,9 +189,17 @@ export default function PagosPage() {
                 <span className="shrink-0 text-[14px] font-bold tabular-nums text-[var(--status-success)]">+{monto(p.cliente.moneda, p.monto)}</span>
                 <button
                   type="button"
+                  onClick={() => abrirEdicion(p)}
+                  aria-label="Editar pago"
+                  className="ml-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)]"
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPorBorrar(p)}
                   aria-label="Eliminar pago"
-                  className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)]"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)]"
                 >
                   <Trash2 size={14} aria-hidden="true" />
                 </button>
@@ -160,6 +208,66 @@ export default function PagosPage() {
           </div>
         </>
       )}
+
+      {/* Editar monto — a pedido del usuario tras la preauditoría. */}
+      <AnimatePresence>
+        {porEditar && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[color-mix(in_oklab,var(--text-primary)_45%,transparent)] sm:items-center"
+            onClick={() => !guardandoEdicion && setPorEditar(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 12, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[360px] rounded-t-[var(--radius-card)] bg-[var(--surface)] p-6 shadow-[var(--shadow-2)] sm:rounded-[var(--radius-card)]"
+            >
+              <h2 className="text-[18px] font-bold text-[var(--text-primary)] [font-family:var(--font-display)]">
+                Editar monto
+              </h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-secondary)]">
+                {porEditar.cliente.nombre} · {porEditar.proyecto.nombre}
+              </p>
+              <label className="mt-4 flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-[var(--text-secondary)]">Monto ({porEditar.cliente.moneda})</span>
+                <input
+                  autoFocus
+                  inputMode="decimal"
+                  value={montoEditado}
+                  onChange={(e) => setMontoEditado(e.target.value.replace(/[^0-9.,]/g, ''))}
+                  disabled={guardandoEdicion}
+                  className="h-14 w-full rounded-[var(--radius-button)] border border-[color-mix(in_oklab,var(--text-tertiary)_28%,transparent)] bg-[var(--bg)] px-4 text-[16px] text-[var(--text-primary)] outline-none focus-visible:border-[var(--accent)] disabled:opacity-60"
+                />
+              </label>
+              {errorEdicion && <p className="mt-2 text-[13px] font-medium text-[var(--status-error)]">{errorEdicion}</p>}
+              <div className="mt-6 flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={confirmarEdicion}
+                  disabled={guardandoEdicion}
+                  className="flex h-12 w-full items-center justify-center rounded-[var(--radius-button)] bg-[var(--accent)] text-[15px] font-semibold text-[var(--bg)] disabled:opacity-60"
+                >
+                  {guardandoEdicion ? 'Guardando…' : 'Guardar cambio'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPorEditar(null)}
+                  disabled={guardandoEdicion}
+                  className="flex h-12 w-full items-center justify-center rounded-[var(--radius-button)] text-[15px] font-semibold text-[var(--text-secondary)]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Confirmación de borrado — nunca inmediato, panel de expertos + preauditoría (P1-1/P0-2) */}
       <AnimatePresence>

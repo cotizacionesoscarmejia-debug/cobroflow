@@ -678,6 +678,19 @@ export async function agregarGasto(datos: {
   if (error) throw error;
 }
 
+/** Corrige el monto de un pago ya registrado (a pedido del usuario, tras la
+ *  preauditoría) — el saldo se recalcula solo, `proyectosConDatos` ya suma
+ *  los pagos vigentes cada vez que se lee. */
+export async function actualizarPago(id: string, monto: number): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin_sesion');
+  const { error } = await supabase.from('payments').update({ monto }).eq('id', id).eq('user_id', user.id);
+  if (error) throw error;
+}
+
 // Preauditoría — P0-2: antes no existía ninguna forma de corregir un pago mal
 // registrado (ej. duplicado por un doble-tap, ver P0-1). El saldo se recalcula
 // solo al borrar (proyectosConDatos suma los pagos restantes), sin tocar nada más.
